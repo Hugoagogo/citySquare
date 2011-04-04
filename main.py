@@ -74,6 +74,7 @@ def build_perfect_grid(grid,tiles):
                     done, grid2 = build_perfect_grid(grid,tiles)
                     if done:
                         return True, grid2
+                grid[col][row] = None
                 return False, None
     return True, grid
         
@@ -147,7 +148,7 @@ class Grid(object):
         print "STARTED"
         flag, grid = build_perfect_grid(Grid(self.win,self.scale),self.win.all_tiles)
         if flag:
-            self.grid = grid
+            self.win.grid = grid
             print "DONE"
         else:
             print "DAMIT"
@@ -192,20 +193,23 @@ class Grid(object):
             tile.draw()
     
     def edges_at(self,x,y):
-        edges = []
-        for deltano, delta in enumerate([(0,-1),(-1,0),(0,1),(1,0)]):
-            px, py = x+delta[0],y+delta[1]
-            print px,py, delta,
-            if 0 <= px < len(self.grid[0]) and 0 <= py < len(self.grid):
-                print self.grid[py][px]
-                if self.grid[py][px]:
-                    edges.append(self.grid[py][px].sides[deltano])
-                else:
-                    edges.append("#")
-            else:
-                edges.append("g")
-                print "bang"
-        return edges
+         edges = []
+         for deltano, delta in enumerate([(0,1),(1,0),(0,-1),(-1,0)]):
+             px, py = x+delta[0],y+delta[1]
+             print "++>",px,py, delta,
+             if 0 <= px < len(self.grid[0]) and 0 <= py < len(self.grid):
+                 print self.grid[py][px]
+                 if self.grid[py][px]:
+                     edges.append(self.grid[py][px].sides[(deltano+2)%len(self.grid[py][px].sides)])
+                 else:
+                     edges.append("#")
+                 print "IN"
+             else:
+                 edges.append("g")
+                 print "bang"
+                 print "OUT"
+         return edges
+    
     def __getitem__(self,key):
         return self.grid[key]
         
