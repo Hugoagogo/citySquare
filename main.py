@@ -6,9 +6,10 @@ SIDE_TYPES = ["g","c","r"]
 
 def load_tiles(directory):
     tiles = []
-    for dirpath, dirnames, filenames in os.walk("directory"):
+    for dirpath, dirnames, filenames in os.walk(directory):
         for file in filenames:
             tiles.append(Tile(os.path.join(dirpath,file)))
+    return tiles
 
 class TileLoadError(Exception):
     "This is raised when loading a tile fails for whatever reason"
@@ -20,19 +21,25 @@ class TileLoadError(Exception):
 class Tile(object):
     def __init__(self,filename):
         head, tail = os.path.split(filename)
-        head = head[:head.rfind(".")]
+        tail = tail[:tail.rfind(".")]
         
         self.sides = []
         
-        for side in head[:4]:
+        for side in tail[:4]:
             if not side in SIDE_TYPES:
                 raise TileLoadError("Invalid Side Data")
             else:
                 self.sides.append(side)
         
-        linked = []
-        for link in head[5:].split("-"):
-            link = [int() for x in list(link)]
-            if max(link) > len(self.sides):
+        self.links = []
+        for link in tail[5:].split("-"):
+            link = [int(x) for x in list(link)]
+            if link and max(link) > len(self.sides) and min(link) > 0:
                 raise TileLoadError("Invalid Link Data")
+            self.links.append(link)
+        print len(self.links)
+    def __repr__(self):
+        return "<Tile %s with links %s>"%("".join(self.sides),str(["-".join(map(str,x)) for x in self.links]))
+        
+print load_tiles("res/tiles/")
                 
