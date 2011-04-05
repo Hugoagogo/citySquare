@@ -1,5 +1,6 @@
 import pyglet
 from pyglet import gl
+from pyglet.window import key
 
 import random
 import copy
@@ -18,6 +19,8 @@ import os,sys
 WINDOW_SIZE = (920,720)
 TILE_SIZE = 128
 HALF_TILE_SIZE = TILE_SIZE // 2
+TRAY_SCALE = .5
+DRAG_SCALE = .9
 
 SIDE_TYPES = ["g","c","r"]
 
@@ -45,6 +48,10 @@ def cycle_int(tint,direction,cap):
     if tint < 1: tint = cap-tint
     return tint
 
+def custom_shuffle(tiles):
+    tile_vals = [random.triangular(0, 5, x.rarity/2) for x in tiles]
+    return zip(*sorted(zip(tile_vals,tiles)))[1]
+
 def build_2darray(x,y):
     return [[None]*x for y in range(y)]
 
@@ -61,6 +68,8 @@ class DummyTile(object):
         head, tail = os.path.split(filename)
         tail = tail[:tail.rfind(".")]
         
+        self.rarity = int(tail[4])
+        
         self.sides = []
         
         for side in tail[:4]:
@@ -70,7 +79,7 @@ class DummyTile(object):
                 self.sides.append(side)
         
         self.links = []
-        for link in tail[5:].split("-"):
+        for link in tail[6:].split("-"):
             link = [int(x) for x in list(link)]
             if link and max(link) > len(self.sides) and min(link) > 0:
                 raise TileLoadError("Invalid Link Data: "+ tail)
@@ -117,7 +126,12 @@ class Tile(DummyTile,pyglet.sprite.Sprite):
     def rotate(self,direction):
         super(Tile, self).rotate(direction)
         self.rotation += 90*direction
-        
+    
+    def point_over(self,x,y):
+        ## NOTE THIS IS AS IT WAS LAST DRAWN
+        d = (self.height//2)
+        return x-d <= self.x <= x+d and y-d <= self.y <= y+d
+    
     def draw(self,x,y,scale=1):
         self.x = x
         self.y = y
@@ -132,7 +146,12 @@ class Grid(object):
         self.win = win
         self.scale = (self.win.height/float(self.height*TILE_SIZE))
         
-        self.unused_tiles = []
+        self.tray_width = self.win.width-self.win.height
+        self.tray_cols = int(self.tray_width/(TRAY_SCALE*self.scale*TILE_SIZE))
+        self.tray_cols_width = self.tray_width/self.tray_cols
+        self.tray_max_rows = int(self.win.height/self.tray_cols_width)
+        
+        self.tray = []
         
     def __call__(self,x,y,tile=-123):
         if tile != -123:
@@ -148,7 +167,7 @@ class Grid(object):
             print "Darn somethings broken couldnt generate grid"
     
     def _build_perfect_grid(self, tiles):
-        random.shuffle(tiles)
+        tiles = custom_shuffle(tiles)
         for y in range(self.height):
             for x in range(self.width):
                 if self(x,y) == None:
@@ -157,8 +176,6 @@ class Grid(object):
                         cmp = tile.compare_sides(to_fit)
                         if cmp != -1:
                             self(x,y,Tile(tile.filename)).rotate(-cmp)
-                            self.print_square()
-                            print to_fit
                             flag = self._build_perfect_grid(tiles)
                             if flag:
                                 return True
@@ -170,21 +187,33 @@ class Grid(object):
                     
     def edges_at(self,x,y):
         edges = []
-        self.print_square()
-        print "+"*20
         for deltano, delta in enumerate([(0,1),(1,0),(0,-1),(-1,0)]):
             px, py = x+delta[0],y+delta[1]
             if 0 <= px < len(self.grid[0]) and 0 <= py < len(self.grid):
                 if self.grid[py][px]:
-                    print "===>",len(edges),(deltano+2)%4,self.grid[py][px].sides[(deltano+2)%4]
                     edges.append(self.grid[py][px].sides[(deltano+2)%4])
                 else:
                     edges.append("#")
             else:
-                print "arg"
                 edges.append("g")
         return edges
-
+    
+    def degrid_all(self):
+        for y in range(self.width):
+            for x in range(self.height):
+                self.tray.append(self(x,y))
+                self(x,y,None)
+                
+    def shuffle_tray(self):
+        random.shuffle(self.tray)
+        for tile in self.tray:
+            tile.rotate(random.randint(0,3))
+            
+    def grab(self,x,y):
+        for tile in self.tray:
+            if tile.point_over(x,y):
+                return tile
+    
     def draw(self):
         gl.glBegin(gl.GL_LINES)
         for x in range(10):
@@ -200,13 +229,19 @@ class Grid(object):
         for y in range(self.width):
             for x in range(self.height):
                 if self(x,y):
-                    #print tile.position, tile.rotation
                     self(x,y).draw((x+0.5)*TILE_SIZE*self.scale,(y+0.5)*TILE_SIZE*self.scale,self.scale)
         
-        for tile in self.unused_tiles:
-            tile.draw()
-            print "SIGH"
-    
+        row = 0
+        col = 0
+        for tile in self.tray:
+            if col == self.tray_cols:
+                col = 0
+                row += 1
+            x = self.win.height + ((col+0.5)*self.tray_cols_width)
+            y = self.win.height - ((row+0.5)*self.tray_cols_width)
+            tile.draw(x,y,TRAY_SCALE*self.scale*9/10)
+            col += 1
+            
     def print_square(self):
         big = []
         for line in reversed(self.grid):
@@ -219,110 +254,24 @@ class Grid(object):
             big.extend(zip(*reline))
         print "\n".join(("".join(x) for x in big))
 
-#class Grid(object):
-#    def __init__(self,win,scale):
-#        self.grid = build_2darray(9,9)
-#        self.win = win
-#        self.unused_tiles = []
-#        self.scale = scale
-#        
-#    def print_places(self):
-#        for line in self.grid:
-#            for square in line:
-#                print square, square.position
-#                self.drop(square,square.x,square.y)
-#    
-#    def print_square(self):
-#        big = []
-#        for line in reversed(self.grid):
-#            big.extend(zip(*[tile.print_square() for tile in line]))
-#        print "\n".join(("".join(x) for x in big))
-#              
-#    def drop(self,tile,x,y):
-#        if tile.x < (9*self.win.height*self.scale):
-#            x = self.win.screen2grid(x-(TILE_SIZE*self.scale)/2)
-#            y = self.win.screen2grid(y-(TILE_SIZE*self.scale)/2)
-#            self.place(tile,x,y)
-#        else:
-#            tile.scale = self.scale/2
-#            tile.x = x
-#            tile.y = y
-#        
-#    def place(self,tile,x,y):
-#        tile.scale = self.scale
-#        tile.x = (x+0.5)*TILE_SIZE*self.scale
-#        tile.y = (y+0.5)*TILE_SIZE*self.scale
-#        print x,y, tile.x, tile.y
-#        self.grid[y][x] = tile
-#        
-#    def draw(self):
-#        gl.glBegin(gl.GL_LINES)
-#        for x in range(10):
-#            gl.glColor3ub(125,125,125)
-#            gl.glColor3ub(125,125,125)
-#            gl.glColor3ub(125,125,125)
-#            gl.glColor3ub(125,125,125)
-#            
-#            gl.glVertex2f(x*TILE_SIZE*self.scale,0)
-#            gl.glVertex2f(x*TILE_SIZE*self.scale,self.win.height)
-#            gl.glVertex2f(0,x*TILE_SIZE*self.scale)
-#            gl.glVertex2f(self.win.height,x*TILE_SIZE*self.scale)
-#        gl.glEnd()
-#            
-#        
-#        for line in self.grid:
-#            for tile in line:
-#                if tile:
-#                    #print tile.position, tile.rotation
-#                    tile.draw()
-#        
-#        for tile in self.unused_tiles:
-#            tile.draw()
-#            print "SIGH"
-    #
-    #def __getitem__(self,key):
-    #    return self.grid[key]
-    #    
-    #def pprint(self):
-    #    print "GRID OBJECT"
-    #    for line in reversed(self.grid): print line
-    #            
-    #    
-
 class GameWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
         pyglet.window.Window.__init__(self, *args, **kwargs)
-        self.setup()
-        
-    def setup(self):
         self.grid = Grid(self,9,9)
         self.grid.build_perfect_grid()
-        #
-        #for x in range(3):
-        #    self.grid.drop(random.choice(self.all_tiles),int(x*(TILE_SIZE*self.grid.scale))+5,20)
+        self.grid.degrid_all()
         
     def on_mouse_press(self,x,y,button,modifiers):
-        print "STARTED"
-        flag, grid = build_perfect_grid(self.grid,self.all_tiles)
-        if flag:
-            self.grid = grid
-            grid.print_places()
-            print grid.grid
-            print "DONE"
-        else:
-            print "DAMIT"
+        print self.grid.grab(x,y)
             
     def on_mouse_motion(self,x,y,dx,dy):
     #    self.grid.print_square()
         x,y = self.screen2grid(x), self.screen2grid(y)
-        print x,y,self.grid.edges_at(x,y)
-    #    print x,y,
-    #    if self.grid(x,y):
-    #        print self.grid(x,y).x,self.grid(x,y).y,self.grid(x,y).rotation,self.grid(x,y)
-    #    else:
-    #        print
-        #self.grid(x,y).x,self.grid(x,y).y = (x+0.5)*TILE_SIZE*self.grid.scale,(y+0.5)*TILE_SIZE*self.grid.scale
-        #self.grid.print_places()
+        #print x,y,self.grid.edges_at(x,y)
+        
+    def on_key_press(self,symbol, modifiers):
+        if symbol == key.SPACE:
+            self.grid.shuffle_tray()
     
     def on_draw(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
