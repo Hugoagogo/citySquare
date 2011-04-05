@@ -6,16 +6,9 @@ import copy
 
 import os,sys
 
-# open our log file
-so = se = open("test.log", 'w', 0)
+import gc, weakref
 
-# re-open stdout without buffering
-sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
-
-# redirect stdout and stderr to the log file opened above
-os.dup2(so.fileno(), sys.stdout.fileno())
-
-WINDOW_SIZE = (1024,768)
+WINDOW_SIZE = (920,720)
 TILE_SIZE = 128
 HALF_TILE_SIZE = TILE_SIZE // 2
 
@@ -29,7 +22,7 @@ def load_tiles(directory):
         for file in filenames:
             if file[file.rfind("."):] == ".png":
                 tiles.append(Tile(os.path.join(dirpath,file)))
-                tiles[-1].x,tiles[-1].y = 200,200
+                tiles[-1].x,tiles[-1].y = 100,100
     return tiles
 
 def cycle_list(tlist,direction):
@@ -50,25 +43,20 @@ def build_2darray(x,y):
     return [[None]*x for y in range(y)]
 
 def build_perfect_grid(grid,tiles):
-    grid.pprint()
-    print
     for row in range(len(grid.grid)):
         for col in range(len(grid.grid[row])):
             print col,row
             if grid[row][col] == None:
                 sides = grid.edges_at(col,row)
-                print sides
                 possibles = []
                 
                 for tile in tiles:
                     cmp = compare_sides(sides, tile.sides)
                     if cmp != -1:
-                        print tile
-                        tile.rotate(cmp)
-                        print tile
                         possibles.append(copy.deepcopy(tile))
+                        print id(possibles[-1]), id(tile)
+                        possibles[-1].rotate(cmp)
                 random.shuffle(possibles)
-                print possibles
                 for possible in possibles:
                     grid.place(possible,col,row)
                     done, grid2 = build_perfect_grid(grid,tiles)
@@ -129,30 +117,40 @@ class Tile(pyglet.sprite.Sprite):
 
             
     def __repr__(self):
-        return "<Tile %s with links %s>"%("".join(self.sides),str(["-".join(map(str,x)) for x in self.links]))
+        #return "<Tile %s with links %s>"%("".join(self.sides),str(["-".join(map(str,x)) for x in self.links]))
+        return str(id(self))
         
     def rotate(self,direction):
         self.sides = cycle_list(self.sides,direction)
         self.links = [[cycle_int(y,direction,len(self.sides)) for y in x] for x in self.links]
         self.rotation += 90*direction
         
+    def print_square(self):
+        return [
+            " "+str(self.sides[0])+" ",
+            str(self.sides[3])+"#"+str(self.sides[1]),
+            " "+str(self.sides[2])+" "
+            ]
+        
 class Grid(object):
     def __init__(self,win,scale):
         self.grid = build_2darray(9,9)
-        print self.grid
         self.win = win
         self.unused_tiles = []
         self.scale = scale
         
-    def tiles_to_fill(self):
-        print "STARTED"
-        flag, grid = build_perfect_grid(Grid(self.win,self.scale),self.win.all_tiles)
-        if flag:
-            self.win.grid = grid
-            print "DONE"
-        else:
-            print "DAMIT"
-        
+    def print_places(self):
+        for line in self.grid:
+            for square in line:
+                print square, square.position
+                self.drop(square,square.x,square.y)
+    
+    def print_square(self):
+        big = []
+        for line in reversed(self.grid):
+            big.extend(zip(*[tile.print_square() for tile in line]))
+        print "\n".join(("".join(x) for x in big))
+              
     def drop(self,tile,x,y):
         if tile.x < (9*self.win.height*self.scale):
             x = self.win.screen2grid(x-(TILE_SIZE*self.scale)/2)
@@ -167,6 +165,7 @@ class Grid(object):
         tile.scale = self.scale
         tile.x = (x+0.5)*TILE_SIZE*self.scale
         tile.y = (y+0.5)*TILE_SIZE*self.scale
+        print x,y, tile.x, tile.y
         self.grid[y][x] = tile
         
     def draw(self):
@@ -187,27 +186,24 @@ class Grid(object):
         for line in self.grid:
             for tile in line:
                 if tile:
+                    #print tile.position, tile.rotation
                     tile.draw()
         
         for tile in self.unused_tiles:
             tile.draw()
+            print "SIGH"
     
     def edges_at(self,x,y):
          edges = []
          for deltano, delta in enumerate([(0,1),(1,0),(0,-1),(-1,0)]):
              px, py = x+delta[0],y+delta[1]
-             print "++>",px,py, delta,
              if 0 <= px < len(self.grid[0]) and 0 <= py < len(self.grid):
-                 print self.grid[py][px]
                  if self.grid[py][px]:
                      edges.append(self.grid[py][px].sides[(deltano+2)%len(self.grid[py][px].sides)])
                  else:
                      edges.append("#")
-                 print "IN"
              else:
                  edges.append("g")
-                 print "bang"
-                 print "OUT"
          return edges
     
     def __getitem__(self,key):
@@ -227,22 +223,34 @@ class GameWindow(pyglet.window.Window):
         
     def setup(self):
         self.grid = Grid(self,(self.height/float(9*TILE_SIZE)))
-        
-        for x in range(3):
-            self.grid.drop(random.choice(self.all_tiles),int(x*(TILE_SIZE*self.grid.scale))+5,20)
+        #
+        #for x in range(3):
+        #    self.grid.drop(random.choice(self.all_tiles),int(x*(TILE_SIZE*self.grid.scale))+5,20)
         
     def on_mouse_press(self,x,y,button,modifiers):
-        self.grid.tiles_to_fill()
-    
-    def on_mouse_move(self):
-        print screen2grid(x), screen2grid(y)
+        print "STARTED"
+        flag, grid = build_perfect_grid(self.grid,self.all_tiles)
+        if flag:
+            self.grid = grid
+            grid.print_places()
+            print grid.grid
+            print "DONE"
+        else:
+            print "DAMIT"
+            
+    def on_mouse_motion(self,x,y,dx,dy):
+        print self.grid.print_square()
+        x,y = self.screen2grid(x), self.screen2grid(y)
+        print x,y,self.grid[y][x].x,self.grid[y][x].y,self.grid[y][x].rotation,self.grid[y][x]
+        self.grid[y][x].x,self.grid[y][x].y = (x+0.5)*TILE_SIZE*self.grid.scale,(y+0.5)*TILE_SIZE*self.grid.scale
+        #self.grid.print_places()
     
     def on_draw(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         self.grid.draw()
         
     def screen2grid(self,val):
-        val = int(round((val/self.grid.scale)/TILE_SIZE))
+        val = int(round(((val/self.grid.scale)-HALF_TILE_SIZE)/TILE_SIZE))
         return val
     
 #win = GameWindow(fullscreen=True)
