@@ -152,6 +152,7 @@ class Grid(object):
         self.tray_max_rows = int(self.win.height/self.tray_cols_width)
         
         self.tray = []
+        self.dragging = None
         
     def __call__(self,x,y,tile=-123):
         if tile != -123:
@@ -209,10 +210,41 @@ class Grid(object):
         for tile in self.tray:
             tile.rotate(random.randint(0,3))
             
+    
     def grab(self,x,y):
+        tile = self.tile_at(x,y)
+        if tile:
+            self.dragging = tile
+            if tile in self.tray:
+                self.tray.remove(tile)
+                
+            for y in range(self.width):
+                for x in range(self.height):
+                    if self(x,y) == tile:
+                        self(x,y,None)
+    
+    def drop(self,x,y):
+        x,y = self.win.screen2grid(x),self.win.screen2grid(y)
+        
+        if x < self.width:
+            if self(x,y) == None:
+                self(x,y,self.dragging)
+                self.dragging = None
+        else:
+            self.tray.append(self.dragging)
+            self.dragging = None
+        
+    
+    def tile_at(self,x,y):
         for tile in self.tray:
             if tile.point_over(x,y):
                 return tile
+        
+        for line in self.grid:
+            for tile in line:
+                if tile and tile.point_over(x,y):
+                    return tile
+        
     
     def draw(self):
         gl.glBegin(gl.GL_LINES)
@@ -242,6 +274,8 @@ class Grid(object):
             tile.draw(x,y,TRAY_SCALE*self.scale*9/10)
             col += 1
             
+        if self.dragging: self.dragging.draw(self.dragging.x,self.dragging.y,self.scale*DRAG_SCALE)
+            
     def print_square(self):
         big = []
         for line in reversed(self.grid):
@@ -262,12 +296,22 @@ class GameWindow(pyglet.window.Window):
         self.grid.degrid_all()
         
     def on_mouse_press(self,x,y,button,modifiers):
-        print self.grid.grab(x,y)
+        if not self.grid.dragging: self.grid.grab(x,y)
+        else: self.grid.drop(x,y)
             
     def on_mouse_motion(self,x,y,dx,dy):
+        if self.grid.dragging: self.grid.dragging.set_position(x,y)
+        
     #    self.grid.print_square()
         x,y = self.screen2grid(x), self.screen2grid(y)
         #print x,y,self.grid.edges_at(x,y)
+    
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        if self.grid.dragging:
+            if scroll_y < 0:
+                self.grid.dragging.rotate(CCW)
+            else:
+                self.grid.dragging.rotate(CW)
         
     def on_key_press(self,symbol, modifiers):
         if symbol == key.SPACE:
