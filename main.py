@@ -225,19 +225,22 @@ class Grid(object):
         """ Pick up a tile, if any at the given coordinates """
         tile = self.tile_at(x,y)
         if tile:
+            temp = None
+            if self.dragging: temp = self.dragging
             self.dragging = tile
             if tile in self.tray:
                 self.tray.remove(tile)
-                
+                return True
             for y in range(self.height):
                 for x in range(self.width):
                     if self(x,y) == tile:
-                        self(x,y,None)
+                        self(x,y,temp)
+                        return True
     
     def drop(self,x,y):
         """ Drop the currently held tile to the board if possible """
         x,y = self.win.screen2grid(x),self.win.screen2grid(y)
-        
+        temp = self.dragging
         if x < self.width:
             if self(x,y) == None:
                 self(x,y,self.dragging)
@@ -245,7 +248,7 @@ class Grid(object):
         else:
             self.tray.append(self.dragging)
             self.dragging = None
-        
+        return temp
     
     def tile_at(self,x,y):
         for tile in self.tray:
@@ -309,8 +312,8 @@ class GameWindow(pyglet.window.Window):
         self.grid.degrid_all()
         
     def on_mouse_press(self,x,y,button,modifiers):
-        if not self.grid.dragging: self.grid.grab(x,y)
-        else: self.grid.drop(x,y)
+        if not self.grid.grab(x,y):
+            self.grid.drop(x,y)
             
     def on_mouse_motion(self,x,y,dx,dy):
         if self.grid.dragging: self.grid.dragging.set_position(x,y)
