@@ -304,7 +304,7 @@ class Grid(object):
 class GameWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
         pyglet.window.Window.__init__(self, *args, **kwargs)
-        self.grid = Grid(self,GRID_SIZE[0],GRID_WIDTH[1])
+        self.grid = Grid(self,GRID_SIZE[0],GRID_SIZE[1])
         self.grid.build_perfect_grid()
         self.grid.degrid_all()
         
