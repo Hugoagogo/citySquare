@@ -16,7 +16,7 @@ import os,sys
 ## redirect stdout and stderr to the log file opened above
 #os.dup2(so.fileno(), sys.stdout.fileno())
 
-WINDOW_SIZE = (920,720)
+WINDOW_SIZE = (800,600)
 TILE_SIZE = 128
 HALF_TILE_SIZE = TILE_SIZE // 2
 TRAY_SCALE = .5
@@ -126,6 +126,7 @@ class Tile(DummyTile,pyglet.sprite.Sprite):
     def rotate(self,direction):
         super(Tile, self).rotate(direction)
         self.rotation += 90*direction
+        self.rotation = self.rotation%360
     
     def point_over(self,x,y):
         ## NOTE THIS IS AS IT WAS LAST DRAWN
@@ -133,8 +134,8 @@ class Tile(DummyTile,pyglet.sprite.Sprite):
         return x-d <= self.x <= x+d and y-d <= self.y <= y+d
     
     def draw(self,x,y,scale=1):
-        self.x = x
-        self.y = y
+        self.x = int(x)
+        self.y = int(y)
         self.scale = scale
         pyglet.sprite.Sprite.draw(self)
         
@@ -146,14 +147,18 @@ class Grid(object):
         self.win = win
         self.scale = (self.win.height/float(self.height*TILE_SIZE))
         
-        self.tray_width = self.win.width-self.win.height
+        self.dragging = None
+        
+        self.tray_init()
+        
+    def tray_init(self,wipe = True):
+        if wipe: self.tray = []
+        self.tray_start_x = self.width*TILE_SIZE*self.scale
+        self.tray_width = self.win.width-self.tray_start_x
         self.tray_cols = int(self.tray_width/(TRAY_SCALE*self.scale*TILE_SIZE))
         self.tray_cols_width = self.tray_width/self.tray_cols
         self.tray_max_rows = int(self.win.height/self.tray_cols_width)
-        
-        self.tray = []
-        self.dragging = None
-        
+    
     def __call__(self,x,y,tile=-123):
         if tile != -123:
             self.grid[y][x] = tile
@@ -200,8 +205,8 @@ class Grid(object):
         return edges
     
     def degrid_all(self):
-        for y in range(self.width):
-            for x in range(self.height):
+        for y in range(self.height):
+            for x in range(self.width):
                 self.tray.append(self(x,y))
                 self(x,y,None)
                 
@@ -218,8 +223,8 @@ class Grid(object):
             if tile in self.tray:
                 self.tray.remove(tile)
                 
-            for y in range(self.width):
-                for x in range(self.height):
+            for y in range(self.height):
+                for x in range(self.width):
                     if self(x,y) == tile:
                         self(x,y,None)
     
@@ -247,19 +252,19 @@ class Grid(object):
         
     
     def draw(self):
-        gl.glBegin(gl.GL_LINES)
-        for x in range(10):
-            gl.glColor3ub(125,125,125)
-            
-            gl.glVertex2f(x*TILE_SIZE*self.scale,0)
-            gl.glVertex2f(x*TILE_SIZE*self.scale,self.win.height)
-            gl.glVertex2f(0,x*TILE_SIZE*self.scale)
-            gl.glVertex2f(self.win.height,x*TILE_SIZE*self.scale)
-        gl.glEnd()
+        for y in range(self.height):
+            for x in range(self.width):
+                gl.glBegin(gl.GL_POLYGON)
+                gl.glColor3ub(*[30+((x+y)%2)*50]*3)
+                gl.glVertex2f(int(x*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
+                gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
+                gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
+                gl.glVertex2f(int(x*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
+                gl.glEnd()
             
         
-        for y in range(self.width):
-            for x in range(self.height):
+        for y in range(self.height):
+            for x in range(self.width):
                 if self(x,y):
                     self(x,y).draw((x+0.5)*TILE_SIZE*self.scale,(y+0.5)*TILE_SIZE*self.scale,self.scale)
         
@@ -269,7 +274,7 @@ class Grid(object):
             if col == self.tray_cols:
                 col = 0
                 row += 1
-            x = self.win.height + ((col+0.5)*self.tray_cols_width)
+            x = self.tray_start_x + ((col+0.5)*self.tray_cols_width)
             y = self.win.height - ((row+0.5)*self.tray_cols_width)
             tile.draw(x,y,TRAY_SCALE*self.scale*9/10)
             col += 1
@@ -291,7 +296,7 @@ class Grid(object):
 class GameWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
         pyglet.window.Window.__init__(self, *args, **kwargs)
-        self.grid = Grid(self,9,9)
+        self.grid = Grid(self,5,5)
         self.grid.build_perfect_grid()
         self.grid.degrid_all()
         
@@ -316,6 +321,16 @@ class GameWindow(pyglet.window.Window):
     def on_key_press(self,symbol, modifiers):
         if symbol == key.SPACE:
             self.grid.shuffle_tray()
+        elif symbol == key.UP:
+            self.grid.grid = cycle_list(self.grid.grid,1)
+        elif symbol == key.DOWN:
+            self.grid.grid = cycle_list(self.grid.grid,-1)
+        elif symbol == key.LEFT:
+            self.grid.grid = [cycle_list(x,-1) for x in self.grid.grid]
+        elif symbol == key.RIGHT:
+            self.grid.grid = [cycle_list(x,1) for x in self.grid.grid]
+                
+            
     
     def on_draw(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
@@ -325,7 +340,7 @@ class GameWindow(pyglet.window.Window):
         val = int(round(((val/self.grid.scale)-HALF_TILE_SIZE)/TILE_SIZE))
         return val
     
-#win = GameWindow(fullscreen=True)
+##win = GameWindow(fullscreen=True)
 win = GameWindow(width=WINDOW_SIZE[0],height=WINDOW_SIZE[1])
 pyglet.app.run()
 
