@@ -7,16 +7,10 @@ import copy
 
 import os,sys
 
-## open our log file
-#so = se = open("test.log", 'w', 0)
-#
-## re-open stdout without buffering
-#sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
-#
-## redirect stdout and stderr to the log file opened above
-#os.dup2(so.fileno(), sys.stdout.fileno())
+WINDOW_SIZE = (800,600) ## None For Fullscreen
+GRID_SIZE = (5,5)
 
-WINDOW_SIZE = (800,600)
+
 TILE_SIZE = 128
 HALF_TILE_SIZE = TILE_SIZE // 2
 TRAY_SCALE = .5
@@ -27,6 +21,7 @@ SIDE_TYPES = ["g","c","r"]
 CW, CCW = 1, -1
 
 def load_tiles(directory):
+    """ Returns a list of dummy tiles """
     tiles = []
     for dirpath, dirnames, filenames in os.walk(directory):
         for file in filenames:
@@ -35,6 +30,7 @@ def load_tiles(directory):
     return tiles
 
 def cycle_list(tlist,direction):
+    """ Cycles a list fowards or backwards """
     tlist = tlist[:]
     for x in range(abs(direction)):
         if direction > 0:
@@ -44,11 +40,13 @@ def cycle_list(tlist,direction):
     return tlist
 
 def cycle_int(tint,direction,cap):
+    """ Cycles an int by direction so that it is never larger than cap """
     tint = (direction+tint)%cap
     if tint < 1: tint = cap-tint
     return tint
 
 def custom_shuffle(tiles):
+    """ My custom method to sort tiles in a weighted way """
     tile_vals = [random.triangular(0, 5, x.rarity/2) for x in tiles]
     return zip(*sorted(zip(tile_vals,tiles)))[1]
 
@@ -56,13 +54,14 @@ def build_2darray(x,y):
     return [[None]*x for y in range(y)]
 
 class TileLoadError(Exception):
-    "This is raised when loading a tile fails for whatever reason"
+    """ This is raised when loading a tile fails for whatever reason """
     def __init__(self, value):
         self.parameter = value
     def __str__(self):
         return repr(self.parameter)
 
 class DummyTile(object):
+    """ Only used for the purposes of building a grid """
     def __init__(self,filename):
         self.filename = filename
         head, tail = os.path.split(filename)
@@ -116,6 +115,7 @@ class DummyTile(object):
         #return str(id(self))
 
 class Tile(DummyTile,pyglet.sprite.Sprite):
+    """ Represent the tiles placed into the grid during gameplay """
     def __init__(self,filename):
         DummyTile.__init__(self,filename)
         image = pyglet.image.load(self.filename)
@@ -140,6 +140,7 @@ class Tile(DummyTile,pyglet.sprite.Sprite):
         pyglet.sprite.Sprite.draw(self)
         
 class Grid(object):
+    """ Very important represents the whole grid as well as the tray """
     def __init__(self,win,width,height):
         self.grid = build_2darray(width,height)
         self.width, self.height = width, height
@@ -165,6 +166,7 @@ class Grid(object):
         return self.grid[y][x]
     
     def build_perfect_grid(self):
+        """ A recursive way to fill the grid with tiles from its current state """
         print "Building Grid"
         flag = self._build_perfect_grid(load_tiles("res/tiles/"))
         if flag:
@@ -192,6 +194,7 @@ class Grid(object):
                             
                     
     def edges_at(self,x,y):
+        """ Finds the edges that a tile would need to have to fit into a given square """
         edges = []
         for deltano, delta in enumerate([(0,1),(1,0),(0,-1),(-1,0)]):
             px, py = x+delta[0],y+delta[1]
@@ -205,18 +208,21 @@ class Grid(object):
         return edges
     
     def degrid_all(self):
+        """ Pushes all tiles to the tray """
         for y in range(self.height):
             for x in range(self.width):
                 self.tray.append(self(x,y))
                 self(x,y,None)
                 
     def shuffle_tray(self):
+        """ Shuffles up the tray, couldnt have tiles being put back to easily could we """
         random.shuffle(self.tray)
         for tile in self.tray:
             tile.rotate(random.randint(0,3))
             
     
     def grab(self,x,y):
+        """ Pick up a tile, if any at the given coordinates """
         tile = self.tile_at(x,y)
         if tile:
             self.dragging = tile
@@ -229,6 +235,7 @@ class Grid(object):
                         self(x,y,None)
     
     def drop(self,x,y):
+        """ Drop the currently held tile to the board if possible """
         x,y = self.win.screen2grid(x),self.win.screen2grid(y)
         
         if x < self.width:
@@ -282,6 +289,7 @@ class Grid(object):
         if self.dragging: self.dragging.draw(self.dragging.x,self.dragging.y,self.scale*DRAG_SCALE)
             
     def print_square(self):
+        """ an ascii Representation of the grid """
         big = []
         for line in reversed(self.grid):
             reline = []
@@ -296,7 +304,7 @@ class Grid(object):
 class GameWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
         pyglet.window.Window.__init__(self, *args, **kwargs)
-        self.grid = Grid(self,5,5)
+        self.grid = Grid(self,GRID_SIZE[0],GRID_WIDTH[1])
         self.grid.build_perfect_grid()
         self.grid.degrid_all()
         
