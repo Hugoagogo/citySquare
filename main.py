@@ -49,6 +49,11 @@ def custom_shuffle(tiles):
     """ My custom method to sort tiles in a weighted way """
     tile_vals = [random.triangular(0, 5, x.rarity/2) for x in tiles]
     return zip(*sorted(zip(tile_vals,tiles)))[1]
+    
+def cmp_tilelist(a, b):
+    if a == None: return 10000
+    elif b == None: return -10000
+    else: return (a.x+a.y)-(b.x+b.y)
 
 def build_2darray(x,y):
     return [[None]*x for y in range(y)]
@@ -201,17 +206,17 @@ class Grid(object):
         return True
     
     def connected_to(self,x,y):
-        print "="*80
+        #print "="*80
         all_attached = []
         tile = self(x,y)
-        print "CHECKING",tile,x,y
+        #print "CHECKING",tile,x,y
         if tile:
             for link in tile.links:
                 attached = [tile]
                 for side in link:
                     side -= 1
                     dx, dy = x+self.deltas[side][0], y+self.deltas[side][1]
-                    print self.deltas[side], side, side+1, cycle_int(side+1,2,4)+1
+                    #print self.deltas[side], side, side+1, cycle_int(side+1,2,4)+1
                     self._connected_to(dx,dy,attached,cycle_int(side+1,2,4),tile.sides[side])
                 all_attached.append([tile.sides[link[0]-1],attached])
             
@@ -221,21 +226,56 @@ class Grid(object):
     def _connected_to(self,x,y,attached,pside,type):
         tile = self(x,y)
         if not tile in attached:
-            print "--Spread",tile,x,y
+            #print "--Spread",tile,x,y
             if tile:
                 for link in tile.links:
-                    print "HERE", pside, link
+                    #print "HERE", pside, link
                     if pside in link and tile.sides[pside-1] == type:
                         attached.append(tile)
                         for side in link:
                             side -= 1
                             dx, dy = x+self.deltas[side][0], y+self.deltas[side][1]
-                            self._connected_to(dx,dy,attached,cycle_int(side,2,4)+1,type)
+                            self._connected_to(dx,dy,attached,cycle_int(side+1,2,4),type)
             elif not None in attached:
-                print x,y,tile
+                #print x,y,tile
                 attached.append(None)
                 
-                    
+    def score(self):
+        #for y in range(self.height):
+        #    for x in range(self.width):
+        #        raw = self.connected_to(x,y)
+        #        if raw:
+        #            print raw
+        cities = []
+        unfinished_cities = []
+        roads = []
+        unfinished_roads = []
+        for y in range(self.height):
+            for x in range(self.width):
+                raw = self.connected_to(x,y)
+                for type, links in raw:
+                    links = sorted(links,cmp=cmp_tilelist)
+                    if type == "c":
+                        
+                            if None in links:
+                                if not links in unfinished_cities:
+                                    unfinished_cities.append(links)
+                            else:
+                                if not links in cities:
+                                    cities.append(links)
+                    elif type == "r":
+                        if None in links:
+                            for link in links:
+                                if not link in unfinished_roads:
+                                    unfinished_roads.append(link)
+                        else: 
+                            for link in links:
+                                if not link in roads:
+                                    roads.append(link)
+        for city in cities:
+            print city
+            
+        print len(roads), roads
                     
     def edges_at(self,x,y):
         """ Finds the edges that a tile would need to have to fit into a given square """
@@ -257,6 +297,17 @@ class Grid(object):
             for x in range(self.width):
                 self.tray.append(self(x,y))
                 self(x,y,None)
+                
+    def degrid_invalid(self):
+        invalids = []
+        for y in range(self.height):
+            for x in range(self.width):
+                if self(x,y) and self(x,y).compare_sides(self.edges_at(x,y)) != 0:
+                    invalids.append((x,y))
+        for x, y in invalids:
+            self.tray.append(self(x,y))
+            self(x,y,None)
+        
                 
     def shuffle_tray(self):
         """ Shuffles up the tray, couldnt have tiles being put back to easily could we """
@@ -366,6 +417,7 @@ class GameWindow(pyglet.window.Window):
     def on_mouse_press(self,x,y,button,modifiers):
         if not self.grid.grab(x,y):
             self.grid.drop(x,y)
+            self.grid.score()
             
     def on_mouse_motion(self,x,y,dx,dy):
         if self.grid.dragging: self.grid.dragging.set_position(x,y)
@@ -394,6 +446,8 @@ class GameWindow(pyglet.window.Window):
             self.grid.grid = [cycle_list(x,-1) for x in self.grid.grid]
         elif symbol == key.RIGHT:
             self.grid.grid = [cycle_list(x,1) for x in self.grid.grid]
+        elif symbol == key.ENTER:
+            self.grid.degrid_invalid()
                 
             
     
