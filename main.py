@@ -40,7 +40,7 @@ def cycle_list(tlist,direction):
     return tlist
 
 def cycle_int(tint,direction,cap):
-    """ Cycles an int by direction so that it is never larger than cap """
+    """ Cycles an int by direction so that it is never larger than or equal to cap """
     tint = (direction+tint)%cap
     if tint < 1: tint = cap-tint
     return tint
@@ -77,14 +77,16 @@ class DummyTile(object):
             else:
                 self.sides.append(side)
         
-        self.links = []
+        self.links = [[x+1] for x in range(len(self.sides)) if self.sides[x] != 'g']
         for link in tail[6:].split("-"):
             link = [int(x) for x in list(link)]
-            if link and max(link) > len(self.sides) and min(link) > 0:
-                raise TileLoadError("Invalid Link Data: "+ tail)
-            self.links.append(link)
-            
-        if len(self.links) == 1 and self.links[0] == []: self.links=[]
+            if link:
+                if max(link) > len(self.sides) and min(link) > 0:
+                    raise TileLoadError("Invalid Link Data: "+ tail)
+                else:
+                    for part in link:
+                        if [part] in self.links: self.links.remove([part])
+                    self.links.append(link)
     
     def compare_sides(self,sides):
         sides = sides[:]
@@ -113,7 +115,7 @@ class DummyTile(object):
             ]
         
     def __repr__(self):
-        return "<Tile %s, %s>"%("".join(self.sides),str(["-".join(map(str,x)) for x in self.links]))
+        return "<Tile %s, %s>"%("".join(self.sides),str(self.links))
         #return str(id(self))
 
 class Tile(DummyTile,pyglet.sprite.Sprite):
@@ -154,7 +156,7 @@ class Grid(object):
         
         self.dragging = None
         
-        self.deltas = [(1,0),(0,1),(-1,0),(0,-1)]
+        self.deltas = [(0,1),(1,0),(0,-1),(-1,0)]
         
         self.tray_init()
         
@@ -199,38 +201,40 @@ class Grid(object):
         return True
     
     def connected_to(self,x,y):
-        print "="*20
-        print x,y
-        attached = []
+        print "="*80
+        all_attached = []
         tile = self(x,y)
+        print "CHECKING",tile,x,y
         if tile:
-            for sideno, side in enumerate(tile.sides):
-                attached.append([side,[]])
-                dx, dy = x+self.deltas[sideno][0], y+self.deltas[sideno][1]
-                dtile = self(dx,dy)
-                if dtile:
-                    print "CHECKING", dx, dy
-                    self._connected_to(dx,dy,attached[-1][1],cycle_int(sideno+1,2,4))
-        return attached
+            for link in tile.links:
+                attached = [tile]
+                for side in link:
+                    side -= 1
+                    dx, dy = x+self.deltas[side][0], y+self.deltas[side][1]
+                    print self.deltas[side], side, side+1, cycle_int(side,2,4)+1
+                    self._connected_to(dx,dy,attached,cycle_int(side,2,4)+1,tile.sides[side])
+                all_attached.append(attached)
+            
+        return all_attached
                 
                     
-    def _connected_to(self,x,y,group,side):
+    def _connected_to(self,x,y,attached,pside,type):
         tile = self(x,y)
-        group.append(tile)
-        if tile:
-            print "CHECKED"
-            for link in tile.links:
-                print "LINK",link,side
-                if side in link:
-                    for tside in link:
-                        print "side",tside
-                        tside-=1
-                        dx, dy = x+self.deltas[tside][0], y+self.deltas[tside][1]
-                        dtile = self(dx,dy)
-                        print x,y,dx,dy,dtile,group
-                        print "++",cycle_int(tside,2,4), tside, dtile.sides[cycle_int(tside,2,4)-1], tile.sides[tside-1]
-                        if dtile and (not dtile in group) and dtile.sides[cycle_int(tside,2,4)-1] == tile.sides[tside-1]:
-                            self._connected_to(dx, dy, group,cycle_int(tside,2,4))
+        if not tile in attached:
+            print "--Spread",tile,x,y
+            print tile
+            if tile:
+                for link in tile.links:
+                    print "HERE", pside, link
+                    if pside in link and tile.sides[pside-1] == type:
+                        attached.append(tile)
+                        for side in link:
+                            side -= 1
+                            dx, dy = x+self.deltas[side][0], y+self.deltas[side][1]
+                            self._connected_to(dx,dy,attached,cycle_int(side,2,4)+1,type)
+            if not None in attached:
+                attached.append(None)
+                
                     
                     
     def edges_at(self,x,y):
@@ -318,13 +322,13 @@ class Grid(object):
                 if self(x,y):
                     self(x,y).draw((x+0.5)*TILE_SIZE*self.scale,(y+0.5)*TILE_SIZE*self.scale,self.scale)
                     #if self(x,y).highlighted:
-                    #    gl.glBegin(gl.GL_POLYGON)
-                    #    gl.glColor4ub(*[255,0,0,100])
-                    #    gl.glVertex2f(int(x*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
-                    #    gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
-                    #    gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
-                    #    gl.glVertex2f(int(x*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
-                    #    gl.glEnd()
+                        #gl.glBegin(gl.GL_POLYGON)
+                        #gl.glColor4ub(*[255,0,0,255])
+                        #gl.glVertex2f(int(x*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
+                        #gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
+                        #gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
+                        #gl.glVertex2f(int(x*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
+                        #gl.glEnd()
         
         row = 0
         col = 0
@@ -368,7 +372,8 @@ class GameWindow(pyglet.window.Window):
         
     #    self.grid.print_square()
         x,y = self.screen2grid(x), self.screen2grid(y)
-        print self.grid.connected_to(x,y)
+        for line in self.grid.connected_to(x,y):
+            print line
         #print x,y,self.grid.edges_at(x,y)
     
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
@@ -401,6 +406,7 @@ class GameWindow(pyglet.window.Window):
         return val
     
 ##win = GameWindow(fullscreen=True)
-win = GameWindow(width=WINDOW_SIZE[0],height=WINDOW_SIZE[1])
+config = pyglet.gl.Config(alpha_size=8)
+win = GameWindow(width=WINDOW_SIZE[0],height=WINDOW_SIZE[1],config=config)
 pyglet.app.run()
 
