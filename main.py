@@ -83,6 +83,8 @@ class DummyTile(object):
             if link and max(link) > len(self.sides) and min(link) > 0:
                 raise TileLoadError("Invalid Link Data: "+ tail)
             self.links.append(link)
+            
+        if len(self.links) == 1 and self.links[0] == []: self.links=[]
     
     def compare_sides(self,sides):
         sides = sides[:]
@@ -123,6 +125,8 @@ class Tile(DummyTile,pyglet.sprite.Sprite):
         image.anchor_y = image.height // 2
         pyglet.sprite.Sprite.__init__(self,image)
         
+        self.highlighted = True
+        
     def rotate(self,direction):
         super(Tile, self).rotate(direction)
         self.rotation += 90*direction
@@ -150,6 +154,8 @@ class Grid(object):
         
         self.dragging = None
         
+        self.deltas = [(1,0),(0,1),(-1,0),(0,-1)]
+        
         self.tray_init()
         
     def tray_init(self,wipe = True):
@@ -161,9 +167,10 @@ class Grid(object):
         self.tray_max_rows = int(self.win.height/self.tray_cols_width)
     
     def __call__(self,x,y,tile=-123):
-        if tile != -123:
-            self.grid[y][x] = tile
-        return self.grid[y][x]
+        if 0 <= x < self.width and 0 <= y < self.height:
+            if tile != -123:
+                self.grid[y][x] = tile
+            return self.grid[y][x]
     
     def build_perfect_grid(self):
         """ A recursive way to fill the grid with tiles from its current state """
@@ -190,8 +197,41 @@ class Grid(object):
                     self(x,y,None)
                     return False
         return True
-                        
-                            
+    
+    def connected_to(self,x,y):
+        print "="*20
+        print x,y
+        attached = []
+        tile = self(x,y)
+        if tile:
+            for sideno, side in enumerate(tile.sides):
+                attached.append([side,[]])
+                dx, dy = x+self.deltas[sideno][0], y+self.deltas[sideno][1]
+                dtile = self(dx,dy)
+                if dtile:
+                    print "CHECKING", dx, dy
+                    self._connected_to(dx,dy,attached[-1][1],cycle_int(sideno+1,2,4))
+        return attached
+                
+                    
+    def _connected_to(self,x,y,group,side):
+        tile = self(x,y)
+        group.append(tile)
+        if tile:
+            print "CHECKED"
+            for link in tile.links:
+                print "LINK",link,side
+                if side in link:
+                    for tside in link:
+                        print "side",tside
+                        tside-=1
+                        dx, dy = x+self.deltas[tside][0], y+self.deltas[tside][1]
+                        dtile = self(dx,dy)
+                        print x,y,dx,dy,dtile,group
+                        print "++",cycle_int(tside,2,4), tside, dtile.sides[cycle_int(tside,2,4)-1], tile.sides[tside-1]
+                        if dtile and (not dtile in group) and dtile.sides[cycle_int(tside,2,4)-1] == tile.sides[tside-1]:
+                            self._connected_to(dx, dy, group,cycle_int(tside,2,4))
+                    
                     
     def edges_at(self,x,y):
         """ Finds the edges that a tile would need to have to fit into a given square """
@@ -277,6 +317,14 @@ class Grid(object):
             for x in range(self.width):
                 if self(x,y):
                     self(x,y).draw((x+0.5)*TILE_SIZE*self.scale,(y+0.5)*TILE_SIZE*self.scale,self.scale)
+                    #if self(x,y).highlighted:
+                    #    gl.glBegin(gl.GL_POLYGON)
+                    #    gl.glColor4ub(*[255,0,0,100])
+                    #    gl.glVertex2f(int(x*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
+                    #    gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
+                    #    gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
+                    #    gl.glVertex2f(int(x*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
+                    #    gl.glEnd()
         
         row = 0
         col = 0
@@ -320,6 +368,7 @@ class GameWindow(pyglet.window.Window):
         
     #    self.grid.print_square()
         x,y = self.screen2grid(x), self.screen2grid(y)
+        print self.grid.connected_to(x,y)
         #print x,y,self.grid.edges_at(x,y)
     
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
