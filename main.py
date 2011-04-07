@@ -8,7 +8,7 @@ import copy
 import os,sys
 
 WINDOW_SIZE = (800,600) ## None For Fullscreen
-GRID_SIZE = (10,10)
+GRID_SIZE = (9,9)
 
 
 TILE_SIZE = 128
@@ -155,12 +155,13 @@ class Tile(DummyTile,pyglet.sprite.Sprite):
         
 class Grid(object):
     """ Very important represents the whole grid as well as the tray """
-    def __init__(self,win,width,height):
+    def __init__(self,win,rect,width,height):
         self.grid = build_2darray(width,height)
         self.width, self.height = width, height
         
         self.win = win
-        self.scale = (self.win.height/float(self.height*TILE_SIZE))
+        self.rect = rect
+        self.scale = (self.rect.height/float(self.height*TILE_SIZE))
         
         self.dragging = None
         
@@ -171,10 +172,10 @@ class Grid(object):
     def tray_init(self,wipe = True):
         if wipe: self.tray = []
         self.tray_start_x = self.width*TILE_SIZE*self.scale
-        self.tray_width = self.win.width-self.tray_start_x
+        self.tray_width = self.rect.width-self.tray_start_x
         self.tray_cols = int(self.tray_width/(TRAY_SCALE*self.scale*TILE_SIZE))
         self.tray_cols_width = self.tray_width/self.tray_cols
-        self.tray_max_rows = int(self.win.height/self.tray_cols_width)
+        self.tray_max_rows = int(self.rect.height/self.tray_cols_width)
     
     def __call__(self,x,y,tile=-123):
         if 0 <= x < self.width and 0 <= y < self.height:
@@ -335,7 +336,7 @@ class Grid(object):
     def drop(self,x,y):
         """ Drop the currently held tile to the board if possible """
         if self.dragging:
-            x,y = self.win.screen2grid(x),self.win.screen2grid(y)
+            x,y = self.screen2grid(x,y)
             temp = self.dragging
             if x < self.width:
                 if self(x,y) == None:
@@ -358,6 +359,8 @@ class Grid(object):
         
     
     def draw(self):
+        gl.glPushMatrix()
+        gl.glTranslated(self.rect.x,self.rect.y,0)
         for y in range(self.height):
             for x in range(self.width):
                 gl.glBegin(gl.GL_POLYGON)
@@ -372,9 +375,7 @@ class Grid(object):
         for y in range(self.height):
             for x in range(self.width):
                 if self(x,y):
-                    self(x,y).draw((x+0.5)*TILE_SIZE*self.scale,(y+0.5)*TILE_SIZE*self.scale,self.scale)
-                    gl.glEnable(gl.GL_BLEND)
-                    gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA) 
+                    self(x,y).draw((x+0.5)*TILE_SIZE*self.scale,(y+0.5)*TILE_SIZE*self.scale,self.scale) 
                     if self(x,y).highlighted:
                         gl.glBegin(gl.GL_POLYGON)
                         gl.glColor4ub(*[255,0,0,175])
@@ -391,12 +392,17 @@ class Grid(object):
                 col = 0
                 row += 1
             x = self.tray_start_x + ((col+0.5)*self.tray_cols_width)
-            y = self.win.height - ((row+0.5)*self.tray_cols_width)
+            y = self.rect.height - ((row+0.5)*self.tray_cols_width)
             tile.draw(x,y,TRAY_SCALE*self.scale*9/10)
             col += 1
-            
+        gl.glPopMatrix()
         if self.dragging: self.dragging.draw(self.dragging.x,self.dragging.y,self.scale*DRAG_SCALE)
-            
+    
+    def screen2grid(self,x,y):
+        x = int(round((((x-self.rect.x)/self.scale)-HALF_TILE_SIZE)/TILE_SIZE))
+        y = int(round((((y-self.rect.y)/self.scale)-HALF_TILE_SIZE)/TILE_SIZE))
+        return (x,y)
+    
     def print_square(self):
         """ an ascii Representation of the grid """
         big = []
@@ -409,11 +415,20 @@ class Grid(object):
                     reline.append(["   "]*3)
             big.extend(zip(*reline))
         print "\n".join(("".join(x) for x in big))
+class Rect(object):
+    def __init__(self,pos,size):
+        self.pos = pos
+        self.x, self.y = pos
+        self.size = size
+        self.width, self.height = size
 
 class GameWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
         pyglet.window.Window.__init__(self, *args, **kwargs)
-        self.grid = Grid(self,GRID_SIZE[0],GRID_SIZE[1])
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        
+        self.grid = Grid(self,Rect((0,40),(self.width,self.height-40)),GRID_SIZE[0],GRID_SIZE[1])
         self.grid.build_perfect_grid()
         self.total_score = self.grid.score()
         self.grid.degrid_all()
@@ -422,7 +437,7 @@ class GameWindow(pyglet.window.Window):
         if not self.grid.grab(x,y):
             self.grid.drop(x,y)
             self.grid.score()
-        self.score = selg.grid.score()
+        self.score = self.grid.score()
             
     def on_mouse_motion(self,x,y,dx,dy):
         if self.grid.dragging: self.grid.dragging.set_position(x,y)
@@ -457,12 +472,11 @@ class GameWindow(pyglet.window.Window):
             
     
     def on_draw(self):
+        gl.glPushMatrix()
+        gl.glTranslatef(2,2,0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         self.grid.draw()
-        
-    def screen2grid(self,val):
-        val = int(round(((val/self.grid.scale)-HALF_TILE_SIZE)/TILE_SIZE))
-        return val
+        gl.glPopMatrix()
     
 ##win = GameWindow(fullscreen=True)
 config = pyglet.gl.Config(alpha_size=8)
