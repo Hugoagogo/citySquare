@@ -40,7 +40,7 @@ def cycle_list(tlist,direction):
     return tlist
 
 def cycle_int(tint,direction,cap):
-    """ Cycles an int by direction so that it is never larger than or equal to cap """
+    """ Cycles an int by direction so that it is never larger cap or less than 1"""
     tint = (direction+tint)%cap
     if tint < 1: tint = cap-tint
     return tint
@@ -211,9 +211,9 @@ class Grid(object):
                 for side in link:
                     side -= 1
                     dx, dy = x+self.deltas[side][0], y+self.deltas[side][1]
-                    print self.deltas[side], side, side+1, cycle_int(side,2,4)+1
-                    self._connected_to(dx,dy,attached,cycle_int(side,2,4)+1,tile.sides[side])
-                all_attached.append(attached)
+                    print self.deltas[side], side, side+1, cycle_int(side+1,2,4)+1
+                    self._connected_to(dx,dy,attached,cycle_int(side+1,2,4),tile.sides[side])
+                all_attached.append([tile.sides[link[0]-1],attached])
             
         return all_attached
                 
@@ -222,7 +222,6 @@ class Grid(object):
         tile = self(x,y)
         if not tile in attached:
             print "--Spread",tile,x,y
-            print tile
             if tile:
                 for link in tile.links:
                     print "HERE", pside, link
@@ -232,7 +231,8 @@ class Grid(object):
                             side -= 1
                             dx, dy = x+self.deltas[side][0], y+self.deltas[side][1]
                             self._connected_to(dx,dy,attached,cycle_int(side,2,4)+1,type)
-            if not None in attached:
+            elif not None in attached:
+                print x,y,tile
                 attached.append(None)
                 
                     
