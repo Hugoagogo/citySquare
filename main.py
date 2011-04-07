@@ -8,7 +8,7 @@ import copy
 import os,sys
 
 WINDOW_SIZE = (800,600) ## None For Fullscreen
-GRID_SIZE = (5,5)
+GRID_SIZE = (10,10)
 
 
 TILE_SIZE = 128
@@ -53,10 +53,13 @@ def custom_shuffle(tiles):
 def cmp_tilelist(a, b):
     if a == None: return 10000
     elif b == None: return -10000
-    else: return (a.x+a.y)-(b.x+b.y)
+    else: return (a.x*100+a.y)-(b.x*100+b.y)
 
 def build_2darray(x,y):
     return [[None]*x for y in range(y)]
+    
+def city_score(num_tiles):
+    return sum(range(num_tiles))
 
 class TileLoadError(Exception):
     """ This is raised when loading a tile fails for whatever reason """
@@ -132,7 +135,7 @@ class Tile(DummyTile,pyglet.sprite.Sprite):
         image.anchor_y = image.height // 2
         pyglet.sprite.Sprite.__init__(self,image)
         
-        self.highlighted = True
+        self.highlighted = False
         
     def rotate(self,direction):
         super(Tile, self).rotate(direction)
@@ -227,10 +230,10 @@ class Grid(object):
         tile = self(x,y)
         if not tile in attached:
             #print "--Spread",tile,x,y
-            if tile:
+            if tile and tile.compare_sides(self.edges_at(x,y)) == 0:
                 for link in tile.links:
                     #print "HERE", pside, link
-                    if pside in link and tile.sides[pside-1] == type:
+                    if pside in link:
                         attached.append(tile)
                         for side in link:
                             side -= 1
@@ -241,11 +244,6 @@ class Grid(object):
                 attached.append(None)
                 
     def score(self):
-        #for y in range(self.height):
-        #    for x in range(self.width):
-        #        raw = self.connected_to(x,y)
-        #        if raw:
-        #            print raw
         cities = []
         unfinished_cities = []
         roads = []
@@ -256,7 +254,6 @@ class Grid(object):
                 for type, links in raw:
                     links = sorted(links,cmp=cmp_tilelist)
                     if type == "c":
-                        
                             if None in links:
                                 if not links in unfinished_cities:
                                     unfinished_cities.append(links)
@@ -272,10 +269,12 @@ class Grid(object):
                             for link in links:
                                 if not link in roads:
                                     roads.append(link)
-        for city in cities:
-            print city
-            
-        print len(roads), roads
+        
+        score = sum([city_score(len(city)) for city in cities])
+        score -= sum([city_score(len(city)) for city in unfinished_cities])
+        score += len(roads)
+        score -= len(unfinished_roads)
+        return score
                     
     def edges_at(self,x,y):
         """ Finds the edges that a tile would need to have to fit into a given square """
@@ -319,6 +318,7 @@ class Grid(object):
     def grab(self,x,y):
         """ Pick up a tile, if any at the given coordinates """
         tile = self.tile_at(x,y)
+        if self.dragging and tile in self.tray: return False
         if tile:
             temp = None
             if self.dragging: temp = self.dragging
@@ -334,16 +334,17 @@ class Grid(object):
     
     def drop(self,x,y):
         """ Drop the currently held tile to the board if possible """
-        x,y = self.win.screen2grid(x),self.win.screen2grid(y)
-        temp = self.dragging
-        if x < self.width:
-            if self(x,y) == None:
-                self(x,y,self.dragging)
+        if self.dragging:
+            x,y = self.win.screen2grid(x),self.win.screen2grid(y)
+            temp = self.dragging
+            if x < self.width:
+                if self(x,y) == None:
+                    self(x,y,self.dragging)
+                    self.dragging = None
+            else:
+                self.tray.append(self.dragging)
                 self.dragging = None
-        else:
-            self.tray.append(self.dragging)
-            self.dragging = None
-        return temp
+            return temp
     
     def tile_at(self,x,y):
         for tile in self.tray:
@@ -372,14 +373,16 @@ class Grid(object):
             for x in range(self.width):
                 if self(x,y):
                     self(x,y).draw((x+0.5)*TILE_SIZE*self.scale,(y+0.5)*TILE_SIZE*self.scale,self.scale)
-                    #if self(x,y).highlighted:
-                        #gl.glBegin(gl.GL_POLYGON)
-                        #gl.glColor4ub(*[255,0,0,255])
-                        #gl.glVertex2f(int(x*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
-                        #gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
-                        #gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
-                        #gl.glVertex2f(int(x*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
-                        #gl.glEnd()
+                    gl.glEnable(gl.GL_BLEND)
+                    gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA) 
+                    if self(x,y).highlighted:
+                        gl.glBegin(gl.GL_POLYGON)
+                        gl.glColor4ub(*[255,0,0,175])
+                        gl.glVertex2f(int(x*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
+                        gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
+                        gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
+                        gl.glVertex2f(int(x*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
+                        gl.glEnd()
         
         row = 0
         col = 0
@@ -412,20 +415,22 @@ class GameWindow(pyglet.window.Window):
         pyglet.window.Window.__init__(self, *args, **kwargs)
         self.grid = Grid(self,GRID_SIZE[0],GRID_SIZE[1])
         self.grid.build_perfect_grid()
+        self.total_score = self.grid.score()
         self.grid.degrid_all()
         
     def on_mouse_press(self,x,y,button,modifiers):
         if not self.grid.grab(x,y):
             self.grid.drop(x,y)
             self.grid.score()
+        self.score = selg.grid.score()
             
     def on_mouse_motion(self,x,y,dx,dy):
         if self.grid.dragging: self.grid.dragging.set_position(x,y)
         
     #    self.grid.print_square()
-        x,y = self.screen2grid(x), self.screen2grid(y)
-        for line in self.grid.connected_to(x,y):
-            print line
+        #x,y = self.screen2grid(x), self.screen2grid(y)
+        #for line in self.grid.connected_to(x,y):
+        #    print line
         #print x,y,self.grid.edges_at(x,y)
     
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
