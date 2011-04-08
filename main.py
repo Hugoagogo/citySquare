@@ -4,10 +4,11 @@ from pyglet.window import key
 
 import random
 import copy
+import time
 
 import os,sys
 
-WINDOW_SIZE = (800,600) ## None For Fullscreen
+WINDOW_SIZE = (768,616) ## None For Fullscreen
 GRID_SIZE = (9,9)
 
 
@@ -249,11 +250,15 @@ class Grid(object):
         unfinished_cities = []
         roads = []
         unfinished_roads = []
+        bonus = 0
         for y in range(self.height):
             for x in range(self.width):
                 raw = self.connected_to(x,y)
+                tile = self(x,y)
+                if tile and tile.compare_sides(self.edges_at(x,y)) == 0: bonus += 1
                 for type, links in raw:
-                    links = sorted(links,cmp=cmp_tilelist)
+                    #links = sorted(links,cmp=cmp_tilelist)
+                    links = set(links)
                     if type == "c":
                             if None in links:
                                 if not links in unfinished_cities:
@@ -270,12 +275,19 @@ class Grid(object):
                             for link in links:
                                 if not link in roads:
                                     roads.append(link)
-        
+
         score = sum([city_score(len(city)) for city in cities])
-        score -= sum([city_score(len(city)) for city in unfinished_cities])
+        score -= sum([city_score(len(city)-1) for city in unfinished_cities])
         score += len(roads)
         score -= len(unfinished_roads)
+        if bonus == self.width*self.height:
+            score += self.width*self.height
         return score
+    
+    def highlight_invalids(self):
+        for y in range(self.height):
+            for x in range(self.width):
+                pass
                     
     def edges_at(self,x,y):
         """ Finds the edges that a tile would need to have to fit into a given square """
@@ -338,7 +350,7 @@ class Grid(object):
         if self.dragging:
             x,y = self.screen2grid(x,y)
             temp = self.dragging
-            if x < self.width:
+            if 0 <= x < self.width and 0 <= y < self.height:
                 if self(x,y) == None:
                     self(x,y,self.dragging)
                     self.dragging = None
@@ -348,6 +360,8 @@ class Grid(object):
             return temp
     
     def tile_at(self,x,y):
+        x -= self.rect.x
+        y -= self.rect.y
         for tile in self.tray:
             if tile.point_over(x,y):
                 return tile
@@ -355,29 +369,28 @@ class Grid(object):
         for line in self.grid:
             for tile in line:
                 if tile and tile.point_over(x,y):
-                    return tile
-        
+                    return tile        
     
     def draw(self):
         gl.glPushMatrix()
         gl.glTranslated(self.rect.x,self.rect.y,0)
         for y in range(self.height):
             for x in range(self.width):
-                gl.glBegin(gl.GL_POLYGON)
+                gl.glBegin(gl.GL_QUADS)
                 gl.glColor3ub(*[30+((x+y)%2)*50]*3)
                 gl.glVertex2f(int(x*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
                 gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
                 gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
                 gl.glVertex2f(int(x*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
                 gl.glEnd()
-            
+                
         
         for y in range(self.height):
             for x in range(self.width):
                 if self(x,y):
-                    self(x,y).draw((x+0.5)*TILE_SIZE*self.scale,(y+0.5)*TILE_SIZE*self.scale,self.scale) 
+                    self(x,y).draw(int((x+0.5)*TILE_SIZE*self.scale),int((y+0.5)*TILE_SIZE*self.scale),self.scale) 
                     if self(x,y).highlighted:
-                        gl.glBegin(gl.GL_POLYGON)
+                        gl.glBegin(gl.GL_QUADS)
                         gl.glColor4ub(*[255,0,0,175])
                         gl.glVertex2f(int(x*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
                         gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
@@ -421,6 +434,67 @@ class Rect(object):
         self.x, self.y = pos
         self.size = size
         self.width, self.height = size
+        
+class ProgressBar(object):
+    def __init__(self,rect,min,max,start_col,end_col,val=None):
+        if val == None: val = max
+        self.rect = rect
+        self.rect.x += 1
+        self.rect.y += 1
+        self.min = min
+        self.max = max
+        self.start_col = start_col
+        self.end_col = end_col
+        self.col = (0,0,0)
+               
+        self.label = pyglet.text.Label('Hello, world',
+                  font_name='Arial',
+                  font_size=int(self.rect.height*.6),
+                  anchor_x="center",
+                  anchor_y="center",
+                  bold = True,
+                  color = (255,255,255,255),
+                  x=(self.rect.width/2)+self.rect.x,
+                  y=(self.rect.height/2)+self.rect.y)
+        
+        self.val = val
+    
+    def get_val(self):
+        return self._val
+    def set_val(self,val):
+        self._val = val
+        self.filled = abs((self.val-self.min)/float(self.max-self.min))
+        
+        if val >= 0:
+            self.col = [int((x-y)*self.filled + y) for x,y in zip(self.start_col, self.end_col)]
+        else:
+            self.col = (180,180,180)
+        self.label.text = self.text()
+    val = property(get_val,set_val)
+    
+    def text(self):
+        return "%d / %d"%(self.val, self.max)
+        
+    def draw(self):
+        gl.glColor3ub(*self.col)
+        gl.glBegin(gl.GL_LINE_LOOP)
+        gl.glVertex2f(int(self.rect.x),int(self.rect.y))
+        gl.glVertex2f(int(self.rect.x),int(self.rect.y+self.rect.height))
+        gl.glVertex2f(int(self.rect.x+self.rect.width),int(self.rect.y+self.rect.height))
+        gl.glVertex2f(int(self.rect.x+self.rect.width),int(self.rect.y))
+        gl.glEnd()
+        gl.glBegin(gl.GL_QUADS)
+        gl.glVertex2f(int((self.rect.x)*self.filled),int(self.rect.y))
+        gl.glVertex2f(int((self.rect.x)*self.filled),int(self.rect.y+self.rect.height))
+        gl.glVertex2f(int((self.rect.x+self.rect.width)*self.filled),int(self.rect.y+self.rect.height))
+        gl.glVertex2f(int((self.rect.x+self.rect.width)*self.filled),int(self.rect.y))
+        gl.glEnd()
+
+        self.label.draw()
+        
+class TimeBar(ProgressBar):
+    def text(self):
+        return str(int(self.val/60))+":"+str(self.val%60).zfill(2)
 
 class GameWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
@@ -428,16 +502,22 @@ class GameWindow(pyglet.window.Window):
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
         
-        self.grid = Grid(self,Rect((0,40),(self.width,self.height-40)),GRID_SIZE[0],GRID_SIZE[1])
+        self.grid = Grid(self,Rect((0,20),(self.width,self.height-40)),GRID_SIZE[0],GRID_SIZE[1])
         self.grid.build_perfect_grid()
-        self.total_score = self.grid.score()
-        self.grid.degrid_all()
+        self.score_bar = ProgressBar(Rect((0,0),(self.width,20)),0,self.grid.score(),(0,255,0),(255,0,0),0)
+        self.time_bar = TimeBar(Rect((0,self.height-20),(self.width,20)),0,60*max(GRID_SIZE),(0,255,0),(255,0,0))
+        
+        pyglet.clock.schedule_interval(self.tick_down, 1)
+        
+    def tick_down(self,something):
+        self.time_bar.val-=1
+        
         
     def on_mouse_press(self,x,y,button,modifiers):
         if not self.grid.grab(x,y):
             self.grid.drop(x,y)
             self.grid.score()
-        self.score = self.grid.score()
+        self.score_bar.val = self.grid.score()
             
     def on_mouse_motion(self,x,y,dx,dy):
         if self.grid.dragging: self.grid.dragging.set_position(x,y)
@@ -468,18 +548,18 @@ class GameWindow(pyglet.window.Window):
             self.grid.grid = [cycle_list(x,1) for x in self.grid.grid]
         elif symbol == key.ENTER:
             self.grid.degrid_invalid()
+        elif symbol == key.DELETE:
+            self.grid.degrid_all()
                 
             
     
     def on_draw(self):
-        gl.glPushMatrix()
-        gl.glTranslatef(2,2,0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         self.grid.draw()
-        gl.glPopMatrix()
+        self.score_bar.draw()
+        self.time_bar.draw()
     
 ##win = GameWindow(fullscreen=True)
-config = pyglet.gl.Config(alpha_size=8)
-win = GameWindow(width=WINDOW_SIZE[0],height=WINDOW_SIZE[1],config=config)
+win = GameWindow(width=WINDOW_SIZE[0],height=WINDOW_SIZE[1])
 pyglet.app.run()
 
