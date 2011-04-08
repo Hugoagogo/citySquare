@@ -9,7 +9,7 @@ import time
 import os,sys
 
 WINDOW_SIZE = (768,616) ## None For Fullscreen
-GRID_SIZE = (9,9)
+GRID_SIZE = (5,5)
 
 
 TILE_SIZE = 128
@@ -287,7 +287,10 @@ class Grid(object):
     def highlight_invalids(self):
         for y in range(self.height):
             for x in range(self.width):
-                pass
+                tile = self(x,y)
+                if tile and tile.compare_sides(self.edges_at(x,y)) != 0:
+                    tile.highlight = True
+                    print INVLAID
                     
     def edges_at(self,x,y):
         """ Finds the edges that a tile would need to have to fit into a given square """
@@ -391,7 +394,7 @@ class Grid(object):
                     self(x,y).draw(int((x+0.5)*TILE_SIZE*self.scale),int((y+0.5)*TILE_SIZE*self.scale),self.scale) 
                     if self(x,y).highlighted:
                         gl.glBegin(gl.GL_QUADS)
-                        gl.glColor4ub(*[255,0,0,175])
+                        gl.glColor4ub(*[255,0,0,80])
                         gl.glVertex2f(int(x*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
                         gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
                         gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
@@ -494,39 +497,89 @@ class ProgressBar(object):
         
 class TimeBar(ProgressBar):
     def text(self):
-        return str(int(self.val/60))+":"+str(self.val%60).zfill(2)
+        return str(int(self.val/60))+":"+str(int(self.val%60)).zfill(2)
 
 class GameWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
         pyglet.window.Window.__init__(self, *args, **kwargs)
+        pyglet.clock.schedule_interval(lambda _: None, 0)
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        self.states = [PlayLevel(self,*GRID_SIZE)]
+    
+    def finished_scene(self):
+        self.states.pop()
+        if not len(self.states):
+            exit()
         
-        self.grid = Grid(self,Rect((0,20),(self.width,self.height-40)),GRID_SIZE[0],GRID_SIZE[1])
+    def on_draw(self):
+        if hasattr(self.states[-1],"on_draw"):
+            self.states[-1].on_draw()
+    
+    def on_mouse_press(self,*args):
+        if hasattr(self.states[-1],"on_mouse_press"):
+            self.states[-1].on_mouse_press(*args)
+    
+    def on_mouse_motion(self,*args):
+        if hasattr(self.states[-1],"on_mouse_motion"):
+            self.states[-1].on_mouse_motion(*args)
+    
+    def on_mouse_scroll(self,*args):
+        if hasattr(self.states[-1],"on_mouse_scroll"):
+            self.states[-1].on_mouse_scroll(*args)
+    
+    def on_key_press(self,*args):
+        if hasattr(self.states[-1],"on_key_press"):
+            self.states[-1].on_key_press(*args)
+    
+class PlayLevel(object):
+    def __init__(self,win,x,y):
+        self.win = win
+        self.grid = Grid(self,Rect((0,20),(self.win.width,self.win.height-40)),x,y)
         self.grid.build_perfect_grid()
-        self.score_bar = ProgressBar(Rect((0,0),(self.width,20)),0,self.grid.score(),(0,255,0),(255,0,0),0)
-        self.time_bar = TimeBar(Rect((0,self.height-20),(self.width,20)),0,60*max(GRID_SIZE),(0,255,0),(255,0,0))
         
-        pyglet.clock.schedule_interval(self.tick_down, 1)
+        #allowed_time = 60*max((x,y))
+        allowed_time = 5
+        
+        self.score_bar = ProgressBar(Rect((0,0),(self.win.width,20)),0,self.grid.score(),(0,255,0),(255,0,0),0)
+        self.time_bar = TimeBar(Rect((0,self.win.height-20),(self.win.width,20)),0,allowed_time,(0,255,0),(255,0,0))
+        self.grid.degrid_all()
+        pyglet.clock.schedule_interval(self.tick_down, .1)
+        
         
     def tick_down(self,something):
-        self.time_bar.val-=1
+        self.time_bar.val-=.1
+        if self.time_bar.val < 0:
+            self.end()
+            
+    def end(self):
+        self.grid.highlight_invalids()
+        if self.grid.score() == self.score_bar.max:
+            print "YOU ARE AWSOME"
+        else:
+            print "YOU LOSE"
+        ##self.on_draw()
+        ##time.sleep(10)
+        ##self.win.finished_scene()
         
         
     def on_mouse_press(self,x,y,button,modifiers):
-        if not self.grid.grab(x,y):
-            self.grid.drop(x,y)
-            self.grid.score()
+        if button == pyglet.window.mouse.LEFT:
+            if not self.grid.grab(x,y):
+                self.grid.drop(x,y)
+        else:
+            if self.grid.dragging:
+                self.grid.dragging.rotate(1)
+            else:
+                tile = self.grid.tile_at(x,y)
+                if tile:
+                    tile.rotate(1)
+
         self.score_bar.val = self.grid.score()
+        self.on_mouse_motion(x,y,0,0)
             
     def on_mouse_motion(self,x,y,dx,dy):
         if self.grid.dragging: self.grid.dragging.set_position(x,y)
-        
-    #    self.grid.print_square()
-        #x,y = self.screen2grid(x), self.screen2grid(y)
-        #for line in self.grid.connected_to(x,y):
-        #    print line
-        #print x,y,self.grid.edges_at(x,y)
     
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
         if self.grid.dragging:
@@ -534,6 +587,7 @@ class GameWindow(pyglet.window.Window):
                 self.grid.dragging.rotate(CCW)
             else:
                 self.grid.dragging.rotate(CW)
+        self.score_bar.val = self.grid.score()
         
     def on_key_press(self,symbol, modifiers):
         if symbol == key.SPACE:
@@ -548,9 +602,7 @@ class GameWindow(pyglet.window.Window):
             self.grid.grid = [cycle_list(x,1) for x in self.grid.grid]
         elif symbol == key.ENTER:
             self.grid.degrid_invalid()
-        elif symbol == key.DELETE:
-            self.grid.degrid_all()
-                
+        self.score_bar.val = self.grid.score()
             
     
     def on_draw(self):
@@ -558,8 +610,14 @@ class GameWindow(pyglet.window.Window):
         self.grid.draw()
         self.score_bar.draw()
         self.time_bar.draw()
+        
+class MainMenu(object):
+    def __init__(self):
+        pass
     
-##win = GameWindow(fullscreen=True)
-win = GameWindow(width=WINDOW_SIZE[0],height=WINDOW_SIZE[1])
+if WINDOW_SIZE == None:
+    win = GameWindow(fullscreen=True)
+else:
+    win = GameWindow(width=WINDOW_SIZE[0],height=WINDOW_SIZE[1])
 pyglet.app.run()
 
