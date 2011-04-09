@@ -554,23 +554,23 @@ class HighScores(object):
         self.size = size
         
         self.scores = highscores.HighScoreFile(str(size)+"grid.highscores")
+        
+    def activate(self):
         self.text = pyglet.text.layout.TextLayout(pyglet.text.decode_attributed('No Highscores'),width=int(self.win.width*.75),multiline=True)
         self.text.anchor_x="center"
         self.text.anchor_y="top"
         self.text.x=(self.win.width/2)
         self.text.y=(self.win.height-40)
-        
-        self.add(99.7182,"Hugh")
-        
-    def activate(self): pass
+        self.update_text()
+        self.add(99.85, "Hugoagogo")
     def deactivate(self): pass
     
     def update_text(self):
         scores = self.scores.gettopscores(10)
-        stext = "{color (255,255,255,255)}{font_size 40}HighScores for %dx%d{font_size 5}\n\n{font_size 20}"%(self.size, self.size)
+        stext = "{tab_stops [420]}{font_name \"Square721 BT\"}{color (255,255,255,255)}{font_size 40}HighScores for %dx%d{font_size 5}\n\n{font_size 20}"%(self.size, self.size)
         for score, name in scores:
-            stext += "{font_size 20}{bold True}%s\t{bold False}%.4f{font_size 5}\n\n"%(name,score)
-        stext += "{font_size 10}Press any key to return to menu"
+            stext += "{font_size 20}%s  {underline (255,255,255,190)}\t{underline None}  %.4f{font_size 5}\n\n"%(name,score)
+        stext += "{font_size 12}Press any key to return to menu"
         self.text.document = pyglet.text.decode_attributed(stext)
         
     def add(self,name,score):
@@ -582,6 +582,9 @@ class HighScores(object):
         self.text.draw()
         
     def on_key_press(self,symbol,modifiers):
+        self.win.pop_scene()
+        
+    def on_mouse_press(self,x,y,buttons,modifiers):
         self.win.pop_scene()
         
         
