@@ -5,12 +5,11 @@ from pyglet.window import key
 import random
 import copy
 import time
+import pickle
 
 import os,sys
 
 WINDOW_SIZE = (768,616) ## None For Fullscreen
-GRID_SIZE = (5,5)
-
 
 TILE_SIZE = 128
 HALF_TILE_SIZE = TILE_SIZE // 2
@@ -20,6 +19,9 @@ DRAG_SCALE = .9
 SIDE_TYPES = ["g","c","r"]
 
 CW, CCW = 1, -1
+
+pyglet.font.add_file('res/Square 721 BT.TTF')
+square_font = pyglet.font.load('Square721 BT')
 
 def load_tiles(directory):
     """ Returns a list of dummy tiles """
@@ -60,7 +62,7 @@ def build_2darray(x,y):
     return [[None]*x for y in range(y)]
     
 def city_score(num_tiles):
-    return sum(range(num_tiles))
+    return sum(range(num_tiles+1))
 
 class TileLoadError(Exception):
     """ This is raised when loading a tile fails for whatever reason """
@@ -167,8 +169,14 @@ class Grid(object):
         self.dragging = None
         
         self.deltas = [(0,1),(1,0),(0,-1),(-1,0)]
-        
+                
         self.tray_init()
+        
+        self.scores = pyglet.text.layout.TextLayout(pyglet.text.decode_attributed('Hello, {bold True}world'),width=500,multiline=True)
+        self.scores.anchor_x="center"
+        self.scores.anchor_y="center"
+        self.scores.x=(self.rect.width/2)+self.rect.x
+        self.scores.y=(self.rect.height/2)+self.rect.y
         
     def tray_init(self,wipe = True):
         if wipe: self.tray = []
@@ -192,6 +200,9 @@ class Grid(object):
             print "Generated Grid"
         else:
             print "Darn somethings broken couldnt generate grid"
+        self.max = 0
+        self.max = self.score()
+            
     
     def _build_perfect_grid(self, tiles):
         tiles = custom_shuffle(tiles)
@@ -245,7 +256,8 @@ class Grid(object):
                 #print x,y,tile
                 attached.append(None)
                 
-    def score(self):
+    def score(self,final=False):
+        score_text = "{color (255,255,255,255)}{font_name Arial}{font_size 20}Score distribution\n\n{font_size 14}"
         cities = []
         unfinished_cities = []
         roads = []
@@ -269,28 +281,38 @@ class Grid(object):
                     elif type == "r":
                         if None in links:
                             for link in links:
-                                if not link in unfinished_roads:
+                                if link and not link in unfinished_roads:
                                     unfinished_roads.append(link)
                         else: 
                             for link in links:
                                 if not link in roads:
                                     roads.append(link)
 
-        score = sum([city_score(len(city)) for city in cities])
-        score -= sum([city_score(len(city)-1) for city in unfinished_cities])
-        score += len(roads)
-        score -= len(unfinished_roads)
+        temp = sum([city_score(len(city)) for city in cities])
+        score = temp
+        score_text+="Finished Cities:\t\t%d points\n\n"%temp
+        
+        temp = sum([city_score(len(city)-1) for city in unfinished_cities])
+        score -= temp
+        score_text+="Uninished Cities:\t\t%d points\n\n"%temp
+        
+        temp = len(roads)
+        score += temp
+        score_text+="Finished Roads:\t\t%d points\n\n"%temp
+        
+        temp = len(unfinished_roads)
+        score -= temp
+        score_text+="Unfinished Roads:\t%d points\n\n"%temp
+        
         if bonus == self.width*self.height:
             score += self.width*self.height
+            score_text+="End of level Bonus:\t%d points\n\n"%(self.width*self.height)
+        
+        score_text+="Total:\t\t\t\t%d\n\n"%score
+        if self.max: score_text+="Compleate:\t\t\t%.2f%%\n\n"%(100*float(score)/self.max)
+        if final: score_text += "{font_size 12}<Press any key to finish>"
+        self.scores.document = pyglet.text.decode_attributed(score_text)
         return score
-    
-    def highlight_invalids(self):
-        for y in range(self.height):
-            for x in range(self.width):
-                tile = self(x,y)
-                if tile and tile.compare_sides(self.edges_at(x,y)) != 0:
-                    tile.highlight = True
-                    print INVLAID
                     
     def edges_at(self,x,y):
         """ Finds the edges that a tile would need to have to fit into a given square """
@@ -314,14 +336,22 @@ class Grid(object):
                 self(x,y,None)
                 
     def degrid_invalid(self):
+        for tile, x, y in self.invalids():
+            self.tray.append(tile)
+            self(x,y,None)
+            
+    def highlight_invalids(self):
+        for tile, x, y in self.invalids():
+            tile.highlighted = True
+            
+    def invalids(self):
         invalids = []
         for y in range(self.height):
             for x in range(self.width):
-                if self(x,y) and self(x,y).compare_sides(self.edges_at(x,y)) != 0:
-                    invalids.append((x,y))
-        for x, y in invalids:
-            self.tray.append(self(x,y))
-            self(x,y,None)
+                tile = self(x,y)
+                if tile and tile.compare_sides(self.edges_at(x,y)) != 0:
+                    invalids.append((tile,x,y))
+        return invalids
         
                 
     def shuffle_tray(self):
@@ -394,7 +424,7 @@ class Grid(object):
                     self(x,y).draw(int((x+0.5)*TILE_SIZE*self.scale),int((y+0.5)*TILE_SIZE*self.scale),self.scale) 
                     if self(x,y).highlighted:
                         gl.glBegin(gl.GL_QUADS)
-                        gl.glColor4ub(*[255,0,0,80])
+                        gl.glColor4ub(*[255,0,0,180])
                         gl.glVertex2f(int(x*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
                         gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
                         gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
@@ -413,6 +443,17 @@ class Grid(object):
             col += 1
         gl.glPopMatrix()
         if self.dragging: self.dragging.draw(self.dragging.x,self.dragging.y,self.scale*DRAG_SCALE)
+    
+    def draw_scores(self):
+        gl.glBegin(gl.GL_QUADS)
+        gl.glColor4ub(*[0,0,0,180])
+        gl.glVertex2f(0,0)
+        gl.glVertex2f(0,self.win.height)
+        gl.glVertex2f(self.win.width,self.win.height)
+        gl.glVertex2f(self.win.width,0)
+        gl.glEnd()
+            
+        self.scores.draw()
     
     def screen2grid(self,x,y):
         x = int(round((((x-self.rect.x)/self.scale)-HALF_TILE_SIZE)/TILE_SIZE))
@@ -498,6 +539,21 @@ class ProgressBar(object):
 class TimeBar(ProgressBar):
     def text(self):
         return str(int(self.val/60))+":"+str(int(self.val%60)).zfill(2)
+        
+#class HighScores(object):
+#    def __init__(self,file):
+#        self.file = file
+#    
+#    def load(self):
+#        f = open(self.file)
+#        self.data = pickle.load(f)
+#        f.close()
+#        
+#    def save(self):
+#        f = open(self.file,"w")
+#        pickle.dump(self.data,f)
+#        f.close()
+        
 
 class GameWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
@@ -505,12 +561,20 @@ class GameWindow(pyglet.window.Window):
         pyglet.clock.schedule_interval(lambda _: None, 0)
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
-        self.states = [PlayLevel(self,*GRID_SIZE)]
+        self.states = [MainMenu(self)] #PlayLevel(self,*GRID_SIZE)
     
-    def finished_scene(self):
+    def push_scene(self,state):
+        self.states[-1].deactivate()
+        self.states.append(state)
+        self.states[-1].activate()
+    
+    def pop_scene(self):
+        self.states[-1].deactivate()
         self.states.pop()
         if not len(self.states):
             exit()
+        else:
+            self.states[-1].activate()
         
     def on_draw(self):
         if hasattr(self.states[-1],"on_draw"):
@@ -531,78 +595,103 @@ class GameWindow(pyglet.window.Window):
     def on_key_press(self,*args):
         if hasattr(self.states[-1],"on_key_press"):
             self.states[-1].on_key_press(*args)
+            
+    def on_key_release(self,*args):                 
+        if hasattr(self.states[-1],"on_key_release"):
+            self.states[-1].on_key_release(*args)
     
 class PlayLevel(object):
     def __init__(self,win,x,y):
         self.win = win
-        self.grid = Grid(self,Rect((0,20),(self.win.width,self.win.height-40)),x,y)
+        self.grid = Grid(self.win,Rect((0,20),(self.win.width,self.win.height-40)),x,y)
         self.grid.build_perfect_grid()
         
-        #allowed_time = 60*max((x,y))
-        allowed_time = 5
+        allowed_time = 60*max((x,y))
+        #allowed_time = 5
         
-        self.score_bar = ProgressBar(Rect((0,0),(self.win.width,20)),0,self.grid.score(),(0,255,0),(255,0,0),0)
+        self.score_bar = ProgressBar(Rect((0,0),(self.win.width,20)),0,self.grid.max,(0,255,0),(255,0,0),0)
         self.time_bar = TimeBar(Rect((0,self.win.height-20),(self.win.width,20)),0,allowed_time,(0,255,0),(255,0,0))
         self.grid.degrid_all()
-        pyglet.clock.schedule_interval(self.tick_down, .1)
         
+        self.show_scores = False
+        
+    def activate(self):
+        print "ACTIVATED"
+        pyglet.clock.schedule_interval(self.tick_down, .1)
+    
+    def deactivate(self):
+        print "DEACTIVATED"
+        pyglet.clock.unschedule(self.tick_down)
         
     def tick_down(self,something):
         self.time_bar.val-=.1
         if self.time_bar.val < 0:
             self.end()
+            self.time_bar.val = 0
+        elif self.score_bar.val == self.score_bar.max:
+            self.end()
             
     def end(self):
+        pyglet.clock.unschedule(self.tick_down)
         self.grid.highlight_invalids()
-        if self.grid.score() == self.score_bar.max:
+        self.show_scores = True
+        if self.grid.score(True) == self.score_bar.max:
             print "YOU ARE AWSOME"
         else:
             print "YOU LOSE"
-        ##self.on_draw()
-        ##time.sleep(10)
-        ##self.win.finished_scene()
         
         
     def on_mouse_press(self,x,y,button,modifiers):
-        if button == pyglet.window.mouse.LEFT:
-            if not self.grid.grab(x,y):
-                self.grid.drop(x,y)
-        else:
-            if self.grid.dragging:
-                self.grid.dragging.rotate(1)
+        if not self.show_scores > 0:
+            if button == pyglet.window.mouse.LEFT:
+                if not self.grid.grab(x,y):
+                    self.grid.drop(x,y)
             else:
-                tile = self.grid.tile_at(x,y)
-                if tile:
-                    tile.rotate(1)
-
-        self.score_bar.val = self.grid.score()
-        self.on_mouse_motion(x,y,0,0)
+                if self.grid.dragging:
+                    self.grid.dragging.rotate(1)
+                else:
+                    tile = self.grid.tile_at(x,y)
+                    if tile:
+                        tile.rotate(1)
+    
+            self.score_bar.val = self.grid.score()
+            self.on_mouse_motion(x,y,0,0)
             
     def on_mouse_motion(self,x,y,dx,dy):
-        if self.grid.dragging: self.grid.dragging.set_position(x,y)
+        if (not self.show_scores > 0) and self.grid.dragging: self.grid.dragging.set_position(x,y)
     
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
-        if self.grid.dragging:
-            if scroll_y < 0:
-                self.grid.dragging.rotate(CCW)
-            else:
-                self.grid.dragging.rotate(CW)
-        self.score_bar.val = self.grid.score()
+        if not self.show_scores > 0:
+            if self.grid.dragging:
+                if scroll_y < 0:
+                    self.grid.dragging.rotate(CCW)
+                else:
+                    self.grid.dragging.rotate(CW)
+            self.score_bar.val = self.grid.score()
         
     def on_key_press(self,symbol, modifiers):
-        if symbol == key.SPACE:
-            self.grid.shuffle_tray()
-        elif symbol == key.UP:
-            self.grid.grid = cycle_list(self.grid.grid,1)
-        elif symbol == key.DOWN:
-            self.grid.grid = cycle_list(self.grid.grid,-1)
-        elif symbol == key.LEFT:
-            self.grid.grid = [cycle_list(x,-1) for x in self.grid.grid]
-        elif symbol == key.RIGHT:
-            self.grid.grid = [cycle_list(x,1) for x in self.grid.grid]
-        elif symbol == key.ENTER:
-            self.grid.degrid_invalid()
-        self.score_bar.val = self.grid.score()
+        if symbol == key.TAB:
+                self.show_scores = -1
+        elif not self.show_scores > 0:
+            if symbol == key.SPACE:
+                self.grid.shuffle_tray()
+            elif symbol == key.UP:
+                self.grid.grid = cycle_list(self.grid.grid,1)
+            elif symbol == key.DOWN:
+                self.grid.grid = cycle_list(self.grid.grid,-1)
+            elif symbol == key.LEFT:
+                self.grid.grid = [cycle_list(x,-1) for x in self.grid.grid]
+            elif symbol == key.RIGHT:
+                self.grid.grid = [cycle_list(x,1) for x in self.grid.grid]
+            elif symbol == key.ENTER:
+                self.grid.degrid_invalid()
+            self.score_bar.val = self.grid.score()
+        else:
+            self.win.pop_scene()
+            
+    def on_key_release(self,symbol,modifiers):
+        if symbol == key.TAB:
+            self.show_scores = 0
             
     
     def on_draw(self):
@@ -610,10 +699,81 @@ class PlayLevel(object):
         self.grid.draw()
         self.score_bar.draw()
         self.time_bar.draw()
+        if self.show_scores:
+            self.grid.draw_scores()
         
-class MainMenu(object):
-    def __init__(self):
+class Menu(object):
+    def __init__(self, win):
+        self.items = []
+        self.win = win
+        
+        self.pad_x = 150
+        self.pad_y = 25
+        
+        self.heading = pyglet.text.Label("Testing",
+                  font_name='Square721 BT',
+                  font_size=80,
+                  anchor_x="center",
+                  anchor_y="center",
+                  x=self.win.width//2,
+                  y=int(self.win.height*0.75))
+        
+    def activate(self):
         pass
+    
+    def deactivate(self):
+        pass
+
+    def set_heading(self,text):
+        self.heading.text = text
+    
+    def add_item(self,text,func):
+        item = pyglet.text.Label(text,
+                  font_name='Square721 BT',
+                  font_size=25,
+                  anchor_x="center",
+                  anchor_y="center",
+                  x=self.win.width/2,
+                  y=self.heading.y-140-len(self.items)*3*self.pad_y)
+        self.items.append([item,func])
+        
+    def on_mouse_press(self,x,y,buttons,modifiers):
+        for item, func in self.items:
+            if abs(item.y-y) < self.pad_y and abs(item.x-x) < self.pad_x:
+                func()
+                return
+        
+    def on_draw(self):
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+        gl.glColor3ub(255,255,255)
+        self.heading.draw()
+        for label, func in self.items:
+            label.draw()
+            gl.glBegin(gl.GL_LINE_LOOP)
+            gl.glVertex2f(label.x-self.pad_x,label.y-self.pad_y)
+            gl.glVertex2f(label.x+self.pad_x,label.y-self.pad_y)
+            gl.glVertex2f(label.x+self.pad_x,label.y+self.pad_y)
+            gl.glVertex2f(label.x-self.pad_x,label.y+self.pad_y)
+            gl.glEnd()
+        
+class MainMenu(Menu):
+    def __init__(self,win):
+        super(MainMenu,self).__init__(win)
+        
+        self.set_heading("citySquare")
+        self.add_item("Play 3x3",self.play3)
+        self.add_item("Play 5x5",self.play5)
+        self.add_item("Play 7x7",self.play7)
+        self.add_item("Play 9x9",self.play9)
+        
+    def play3(self):
+        self.win.push_scene(PlayLevel(self.win,3,3))
+    def play5(self):
+        self.win.push_scene(PlayLevel(self.win,5,5))
+    def play7(self):
+        self.win.push_scene(PlayLevel(self.win,7,7))
+    def play9(self):
+        self.win.push_scene(PlayLevel(self.win,9,9))
     
 if WINDOW_SIZE == None:
     win = GameWindow(fullscreen=True)
