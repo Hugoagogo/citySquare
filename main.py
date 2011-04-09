@@ -776,7 +776,11 @@ class MainMenu(Menu):
     def play9(self):
         self.win.push_scene(PlayLevel(self.win,9,9))
     def how_to_play(self):
-        os.startfile(os.path.abspath("res/how-to-play.html"))
+        try:
+            os.startfile(os.path.abspath("res/how-to-play.html"))
+        except AttributeError:
+            os.system("open" + os.path.abspath("res/how-to-play.html"))
+
     
 if WINDOW_SIZE == None:
     win = GameWindow(fullscreen=True)
