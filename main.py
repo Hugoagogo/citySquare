@@ -716,7 +716,7 @@ class Menu(object):
                   anchor_x="center",
                   anchor_y="center",
                   x=self.win.width//2,
-                  y=int(self.win.height*0.75))
+                  y=int(self.win.height*0.85))
         
     def activate(self):
         pass
@@ -765,6 +765,7 @@ class MainMenu(Menu):
         self.add_item("Play 5x5",self.play5)
         self.add_item("Play 7x7",self.play7)
         self.add_item("Play 9x9",self.play9)
+        self.add_item("How to play",self.how_to_play)
         
     def play3(self):
         self.win.push_scene(PlayLevel(self.win,3,3))
@@ -774,6 +775,8 @@ class MainMenu(Menu):
         self.win.push_scene(PlayLevel(self.win,7,7))
     def play9(self):
         self.win.push_scene(PlayLevel(self.win,9,9))
+    def how_to_play(self):
+        os.startfile(os.path.abspath("res/how-to-play.html"))
     
 if WINDOW_SIZE == None:
     win = GameWindow(fullscreen=True)
