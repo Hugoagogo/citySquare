@@ -9,6 +9,8 @@ import pickle
 
 import os,sys
 
+import highscores
+
 WINDOW_SIZE = (768,616) ## None For Fullscreen
 
 TILE_SIZE = 128
@@ -310,7 +312,7 @@ class Grid(object):
         
         score_text+="Total:\t\t\t\t%d\n\n"%score
         if self.max: score_text+="Complete:\t\t\t%.2f%%\n\n"%(100*float(score)/self.max)
-        if final: score_text += "{font_size 12}<Press any key to finish>"
+        if final: score_text += "{font_size 12}Press any key to finish"
         self.scores.document = pyglet.text.decode_attributed(score_text)
         return score
                     
@@ -546,19 +548,42 @@ class TimeBar(ProgressBar):
     def text(self):
         return str(int(self.val/60))+":"+str(int(self.val%60)).zfill(2)
         
-#class HighScores(object):
-#    def __init__(self,file):
-#        self.file = file
-#    
-#    def load(self):
-#        f = open(self.file)
-#        self.data = pickle.load(f)
-#        f.close()
-#        
-#    def save(self):
-#        f = open(self.file,"w")
-#        pickle.dump(self.data,f)
-#        f.close()
+class HighScores(object):
+    def __init__(self,win,size):
+        self.win = win
+        self.size = size
+        
+        self.scores = highscores.HighScoreFile(str(size)+"grid.highscores")
+        self.text = pyglet.text.layout.TextLayout(pyglet.text.decode_attributed('No Highscores'),width=int(self.win.width*.75),multiline=True)
+        self.text.anchor_x="center"
+        self.text.anchor_y="top"
+        self.text.x=(self.win.width/2)
+        self.text.y=(self.win.height-40)
+        
+        self.add(99.7182,"Hugh")
+        
+    def activate(self): pass
+    def deactivate(self): pass
+    
+    def update_text(self):
+        scores = self.scores.gettopscores(10)
+        stext = "{color (255,255,255,255)}{font_size 40}HighScores for %dx%d{font_size 5}\n\n{font_size 20}"%(self.size, self.size)
+        for score, name in scores:
+            stext += "{font_size 20}{bold True}%s\t{bold False}%.4f{font_size 5}\n\n"%(name,score)
+        stext += "{font_size 10}Press any key to return to menu"
+        self.text.document = pyglet.text.decode_attributed(stext)
+        
+    def add(self,name,score):
+        self.scores.addscore(score,name)
+        self.update_text()
+        
+    def on_draw(self):
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+        self.text.draw()
+        
+    def on_key_press(self,symbol,modifiers):
+        self.win.pop_scene()
+        
         
 
 class GameWindow(pyglet.window.Window):
@@ -804,6 +829,7 @@ class MainMenu(Menu):
         self.heading.font_size = 80
         self.add_item("Time Challenge",self.time_challenge)
         self.add_item("Zen Mode",self.zen_mode)
+        self.add_item("High Scores",self.highscores)
         self.add_item("How to play",self.how_to_play)
         self.add_item("Quit",sys.exit)
     
@@ -819,6 +845,9 @@ class MainMenu(Menu):
         except AttributeError:
             os.system("open " + os.path.abspath("res/how-to-play.html"))
         sys.exit()
+        
+    def highscores(self):
+        self.win.push_scene(HighScores(self.win,5))
 
             
 class TimeLevelMenu(Menu):
@@ -849,6 +878,7 @@ class ZenMenu(Menu):
         self.add_item("+",self.increase)
         self.add_item("Play 5x5",self.play)
         self.add_item("-",self.decrease)
+        self.add_item("Back",self.back)
         self.difficulty = 5
     
     def decrease(self):
@@ -859,6 +889,8 @@ class ZenMenu(Menu):
         self.items[1][0].text = "Play %dx%d"%(self.difficulty,self.difficulty)
     def play(self):
         self.win.push_scene(ZenLevel(self.win,self.difficulty,self.difficulty))
+    def back(self):
+        self.win.pop_scene()
     
         
 class PauseMenu(Menu):
