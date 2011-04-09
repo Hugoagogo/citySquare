@@ -226,7 +226,7 @@ class Grid(object):
         all_attached = []
         tile = self(x,y)
         #print "CHECKING",tile,x,y
-        if tile:
+        if tile and tile.compare_sides(self.edges_at(x,y)) == 0:
             for link in tile.links:
                 attached = [tile]
                 for side in link:
