@@ -9,6 +9,8 @@ This is my entry for PyWeek 2011, more info can be found at its [homepage](http:
 **Note** resolution can be easily adjusted at the start of `main.py`, specifically the following:
 
     WINDOW_SIZE = (768,616)
+
+Set this to `None` to enter fullscreen mode
     
 ## How to Play ##
 
