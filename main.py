@@ -616,11 +616,9 @@ class PlayLevel(object):
         self.show_scores = False
         
     def activate(self):
-        print "ACTIVATED"
         pyglet.clock.schedule_interval(self.tick_down, .1)
     
     def deactivate(self):
-        print "DEACTIVATED"
         pyglet.clock.unschedule(self.tick_down)
         
     def tick_down(self,something):
@@ -685,6 +683,8 @@ class PlayLevel(object):
                 self.grid.grid = [cycle_list(x,1) for x in self.grid.grid]
             elif symbol == key.ENTER:
                 self.grid.degrid_invalid()
+            elif symbol == key.ESCAPE:
+                self.win.push_scene(PauseMenu(self.win))
             self.score_bar.val = self.grid.score()
         else:
             self.win.pop_scene()
@@ -712,7 +712,7 @@ class Menu(object):
         
         self.heading = pyglet.text.Label("Testing",
                   font_name='Square721 BT',
-                  font_size=80,
+                  font_size=60,
                   anchor_x="center",
                   anchor_y="center",
                   x=self.win.width//2,
@@ -761,12 +761,30 @@ class MainMenu(Menu):
         super(MainMenu,self).__init__(win)
         
         self.set_heading("citySquare")
-        self.add_item("Play 3x3",self.play3)
-        self.add_item("Play 5x5",self.play5)
-        self.add_item("Play 7x7",self.play7)
-        self.add_item("Play 9x9",self.play9)
+        self.heading.font_size = 80
+        self.add_item("Time Challenge",self.time_challenge)
         self.add_item("How to play",self.how_to_play)
+    
+    def time_challenge(self):
+        self.win.push_scene(TimeLevelMenu(self.win))
         
+    def how_to_play(self):
+        try:
+            os.startfile(os.path.abspath("res/how-to-play.html"))
+        except AttributeError:
+            os.system("open" + os.path.abspath("res/how-to-play.html"))
+            
+class TimeLevelMenu(Menu):
+    def __init__(self,win):
+        super(TimeLevelMenu,self).__init__(win)
+        
+        self.set_heading("Difficulty")
+        self.add_item("Easy 3x3",self.play3)
+        self.add_item("Challenging 5x5",self.play5)
+        self.add_item("Damn Hard 7x7",self.play7)
+        self.add_item("Nightmare 9x9",self.play9)
+        self.add_item("Back",self.back)
+    
     def play3(self):
         self.win.push_scene(PlayLevel(self.win,3,3))
     def play5(self):
@@ -775,11 +793,21 @@ class MainMenu(Menu):
         self.win.push_scene(PlayLevel(self.win,7,7))
     def play9(self):
         self.win.push_scene(PlayLevel(self.win,9,9))
-    def how_to_play(self):
-        try:
-            os.startfile(os.path.abspath("res/how-to-play.html"))
-        except AttributeError:
-            os.system("open" + os.path.abspath("res/how-to-play.html"))
+    def back(self):
+        self.win.pop_scene()
+        
+class PauseMenu(Menu):
+    def __init__(self,win):
+        super(PauseMenu,self).__init__(win)
+        self.set_heading("Paused")
+        self.add_item("Resume",self.resume)
+        self.add_item("Back to menu",self.menu)
+    def menu(self):
+        self.win.pop_scene()
+        self.win.pop_scene()
+    
+    def resume(self):
+        self.win.pop_scene()
 
     
 if WINDOW_SIZE == None:
