@@ -815,7 +815,7 @@ class MainMenu(Menu):
         try:
             os.startfile(os.path.abspath("res/how-to-play.html"))
         except AttributeError:
-            os.system("open" + os.path.abspath("res/how-to-play.html"))
+            os.system("open " + os.path.abspath("res/how-to-play.html"))
             
 class TimeLevelMenu(Menu):
     def __init__(self,win):
