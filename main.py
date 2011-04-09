@@ -553,16 +553,16 @@ class HighScores(object):
         self.win = win
         self.size = size
         
-        self.scores = highscores.HighScoreFile(str(size)+"grid.highscores")
-        
-    def activate(self):
-        self.text = pyglet.text.layout.TextLayout(pyglet.text.decode_attributed('No Highscores'),width=int(self.win.width*.75),multiline=True)
+        self.scores = highscores.HighScoreFile("highscores/"+str(size)+"grid.highscores")
+        self.text = pyglet.text.layout.TextLayout(pyglet.text.decode_attributed('{color (255,255,255,255)}Somethings broken'),width=int(self.win.width*.75),multiline=True)
         self.text.anchor_x="center"
         self.text.anchor_y="top"
         self.text.x=(self.win.width/2)
         self.text.y=(self.win.height-40)
+        
+    def activate(self):
         self.update_text()
-        self.add(99.85, "Hugoagogo")
+        
     def deactivate(self): pass
     
     def update_text(self):
@@ -574,7 +574,7 @@ class HighScores(object):
         self.text.document = pyglet.text.decode_attributed(stext)
         
     def add(self,name,score):
-        self.scores.addscore(score,name)
+        self.scores.addscore(name,score)
         self.update_text()
         
     def on_draw(self):
@@ -637,6 +637,7 @@ class GameWindow(pyglet.window.Window):
     
 class PlayLevel(object):
     def __init__(self,win,x,y):
+        self.size = min((x,y))
         self.win = win
         self.grid = Grid(self.win,Rect((0,20),(self.win.width,self.win.height-40)),x,y)
         self.grid.build_perfect_grid()
@@ -668,10 +669,8 @@ class PlayLevel(object):
         pyglet.clock.unschedule(self.tick_down)
         self.grid.highlight_invalids()
         self.show_scores = True
-        if self.grid.score(True) == self.score_bar.max:
-            print "YOU ARE AWSOME"
-        else:
-            print "YOU LOSE"
+        scores = HighScores(self.win,self.size)
+        scores.add("Bob",float(100*self.grid.score(True))/self.grid.max)
             
     def update(self):
         self.score_bar.val = self.grid.score()
@@ -747,6 +746,7 @@ class PlayLevel(object):
 class ZenLevel(PlayLevel):
     def __init__(self,win,x,y):
         self.win = win
+        self.size = min((x,y))
         self.grid = Grid(self.win,Rect((0,20),(self.win.width,self.win.height-20)),x,y)
         self.grid.build_perfect_grid()
         
@@ -850,7 +850,7 @@ class MainMenu(Menu):
         sys.exit()
         
     def highscores(self):
-        self.win.push_scene(HighScores(self.win,5))
+        self.win.push_scene(HighscoreMenu(self.win))
 
             
 class TimeLevelMenu(Menu):
@@ -885,13 +885,34 @@ class ZenMenu(Menu):
         self.difficulty = 5
     
     def decrease(self):
-        self.difficulty = max(2,self.difficulty-1)
+        self.difficulty = max(3,self.difficulty-1)
         self.items[1][0].text = "Play %dx%d"%(self.difficulty,self.difficulty)
     def increase(self):
         self.difficulty = min(9,self.difficulty+1)
         self.items[1][0].text = "Play %dx%d"%(self.difficulty,self.difficulty)
     def play(self):
         self.win.push_scene(ZenLevel(self.win,self.difficulty,self.difficulty))
+    def back(self):
+        self.win.pop_scene()
+        
+class HighscoreMenu(Menu):
+    def __init__(self,win):
+        super(HighscoreMenu,self).__init__(win)
+        self.set_heading("Highscores")
+        self.add_item("+",self.increase)
+        self.add_item("View for 5x5",self.play)
+        self.add_item("-",self.decrease)
+        self.add_item("Back",self.back)
+        self.difficulty = 5
+    
+    def decrease(self):
+        self.difficulty = max(3,self.difficulty-1)
+        self.items[1][0].text = "View for %dx%d"%(self.difficulty,self.difficulty)
+    def increase(self):
+        self.difficulty = min(9,self.difficulty+1)
+        self.items[1][0].text = "View for %dx%d"%(self.difficulty,self.difficulty)
+    def play(self):
+        self.win.push_scene(HighScores(self.win,self.difficulty))
     def back(self):
         self.win.pop_scene()
     
