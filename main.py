@@ -818,7 +818,10 @@ class MainMenu(Menu):
             os.startfile(os.path.abspath("res/how-to-play.html"))
         except AttributeError:
             os.system("open " + os.path.abspath("res/how-to-play.html"))
+<<<<<<< HEAD
         quit()
+=======
+>>>>>>> FrogBot-master
             
 class TimeLevelMenu(Menu):
     def __init__(self,win):
