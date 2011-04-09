@@ -628,7 +628,7 @@ class PlayLevel(object):
         if self.time_bar.val < 0:
             self.end()
             self.time_bar.val = 0
-        elif self.score_bar.val == self.score_bar.max:
+        elif self.score_bar.val >= self.score_bar.max:
             self.end()
             
     def end(self):
