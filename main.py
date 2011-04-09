@@ -9,7 +9,7 @@ import pickle
 
 import os,sys
 
-WINDOW_SIZE = (768,616) ## None For Fullscreen
+WINDOW_SIZE = None#(768,616) ## None For Fullscreen
 
 TILE_SIZE = 128
 HALF_TILE_SIZE = TILE_SIZE // 2
@@ -564,6 +564,7 @@ class TimeBar(ProgressBar):
 class GameWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
         pyglet.window.Window.__init__(self, *args, **kwargs)
+        self.set_exclusive_keyboard(False)
         pyglet.clock.schedule_interval(lambda _: None, 0)
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
@@ -804,6 +805,7 @@ class MainMenu(Menu):
         self.add_item("Time Challenge",self.time_challenge)
         self.add_item("Zen Mode",self.zen_mode)
         self.add_item("How to play",self.how_to_play)
+        self.add_item("Quit",quit)
     
     def time_challenge(self):
         self.win.push_scene(TimeLevelMenu(self.win))
@@ -815,7 +817,8 @@ class MainMenu(Menu):
         try:
             os.startfile(os.path.abspath("res/how-to-play.html"))
         except AttributeError:
-            os.system("open" + os.path.abspath("res/how-to-play.html"))
+            os.system("open " + os.path.abspath("res/how-to-play.html"))
+        quit()
             
 class TimeLevelMenu(Menu):
     def __init__(self,win):
@@ -864,6 +867,7 @@ class PauseMenu(Menu):
         self.set_heading("Paused")
         self.add_item("Resume",self.resume)
         self.add_item("End Game",self.end_game)
+        self.add_item("Quit to Windows",quit)
     def end_game(self):
         self.win.pop_scene()
         self.game.end()
