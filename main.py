@@ -6,6 +6,7 @@ import random
 import copy
 import time
 import pickle
+import datetime
 
 import os,sys
 
@@ -670,7 +671,10 @@ class PlayLevel(object):
         self.grid.highlight_invalids()
         self.show_scores = True
         scores = HighScores(self.win,self.size)
-        scores.add("Bob",float(100*self.grid.score(True))/self.grid.max)
+        t = datetime.datetime.today()
+        player = t.strftime("%I:%M%p %d-%m-%y")
+        
+        scores.add(player,float(100*self.grid.score(True))/self.grid.max)
             
     def update(self):
         self.score_bar.val = self.grid.score()
