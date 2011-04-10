@@ -2,7 +2,7 @@
 
 # @name: highscore.py
 # @summary: This is a simple Python module using SQLite to store and retrieve highscores
-# @author: Morten André Steinsland 
+# @author: Morten André Steinsl and made to use pickle instead of sqlite3 by hugoagogo
 # @contact: www.mortenblog.net 
 
 # @license: GNU Lesser General Public License
@@ -31,7 +31,7 @@
 # DATABASE.getlowestscore()
 # DATABASE.gettopscores(10)
 
-import sqlite3
+import pickle
 from os import path
 
 class HighScoreFile:
@@ -41,80 +41,49 @@ class HighScoreFile:
 
         if path.exists(self.databasename) and path.isfile(self.databasename):
             # database already exist, go ahead and connect
-            self.database = sqlite3.connect(self.databasename)
-            self.dbcursor = self.database.cursor()
+            f = open(self.databasename)
+            self.results = pickle.load(f)
+            f.close()
+            
 
         else:
             # we need to construct the database for the first time
-            # @todo: create some default data(?)
-            self.database = sqlite3.connect(self.databasename)
-            self.dbcursor = self.database.cursor()
-            sqlstatement = u"""CREATE TABLE highscores(score FLOAT, playername TEXT);"""
-            self.dbcursor.execute(sqlstatement)
-            self.database.commit()
+            self.results = []
+            f = open(self.databasename,"w")
+            pickle.dump(self.results,f)
+            f.close()
+            
 
     def getlowestscore(self):
-        """Returns the lowest ranking player and his score"""
-        sqlstatement = u"""SELECT score,playername FROM highscores WHERE score = (SELECT min(score) FROM highscores) LIMIT 1;"""
-        self.dbcursor.execute(sqlstatement)
-
-        for row in self.dbcursor:
-            return (row[0],unicode(str(row[1])))
+        print "Not implimented"
 
     def gethighestscore(self):
-        """Returns the highest ranking player and his score"""
-        sqlstatement = u"""SELECT score,playername FROM highscores WHERE score = (SELECT max(score) FROM highscores) LIMIT 1;"""
-        self.dbcursor.execute(sqlstatement)
-
-        for row in self.dbcursor:
-            return (row[0],unicode(str(row[1])))
+        print "Not implimented"
 
     def gettopscores(self,scores):
         """Returns top X scores"""
         # @todo: handle scores variable being bigger than number of rows(?)
-        sqlstatement = u"""SELECT score,playername FROM highscores ORDER BY score DESC LIMIT %s;""" % scores
-        self.dbcursor.execute(sqlstatement)
-        toplist = []
-
-        for row in self.dbcursor:
-            toplist.append((row[0],unicode(row[1])))
-
-        toplist.sort(key=lambda x:x[1].lower()) #sort by name
-        toplist.sort(key=lambda x:x[0], reverse=True) #sort by score
+        if len(self.results) >= scores:
+            toplist = self.results[:10]
+        else:
+            toplist = self.results
 
         return toplist
 
     def addscore(self,playername,playerscore):
         """Add the players name and score to the database"""
-        sqlstatement = u"""INSERT INTO highscores(score,playername) values (%s,'%s');""" % (str(playerscore), str(playername))
-        self.dbcursor.execute(sqlstatement)
+        self.results.append([playerscore,playername])
         self.maintenance()
 
     def maintenance(self):
         """Sorts the highscorelist , removes duplicates and commits changes"""
         keeptopscores = 10 #keep this many top scores
-        sqlstatement = u"""SELECT score, playername FROM highscores ORDER BY score DESC LIMIT %s;""" % (keeptopscores)
-        self.dbcursor.execute(sqlstatement)
-        highscores = []
-
-        for row in self.dbcursor:
-            highscores.append((row[0],unicode(row[1])))
+        highscores = self.results[:keeptopscores]
 
         highscores.sort(key=lambda x:x[1].lower()) #sort by name
         highscores.sort(key=lambda x:x[0],reverse=True) #sort by score
 
-        ###DELETES THE CONTENTS OF THE highscores TABLE###
-        sqlstatement = u"""DELETE FROM highscores WHERE rowid > -1;"""
-        self.dbcursor.execute(sqlstatement)
-        #########################################################
-
-        del highscores[keeptopscores:] #remove unwanted scores
-
-        #insert sorted data into score table
-        for each in highscores:
-            sqlstatement = u"""INSERT INTO highscores(score,playername) values (%s,'%s');""" % (str(each[0]),str(each[1]))
-            self.dbcursor.execute(sqlstatement)
-
-        #finish up
-        del highscores
-        self.database.commit()
+        self.results = highscores
+        f = open(self.databasename,"w")
+        pickle.dump(self.results,f)
+        f.close()
