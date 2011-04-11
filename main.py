@@ -14,7 +14,7 @@ import highscores
 
 WINDOW_SIZE = (768,616) ## None For Fullscreen
 
-TILE_SIZE = 128
+TILE_SIZE = 256
 HALF_TILE_SIZE = TILE_SIZE // 2
 TRAY_SCALE = .5
 DRAG_SCALE = .9
@@ -29,10 +29,9 @@ square_font = pyglet.font.load('Square721 BT')
 def load_tiles(directory):
     """ Returns a list of dummy tiles """
     tiles = []
-    for dirpath, dirnames, filenames in os.walk(directory):
-        for file in filenames:
-            if file[file.rfind("."):] == ".png":
-                tiles.append(DummyTile(os.path.join(dirpath,file)))
+    for name in os.listdir(directory):
+        if os.path.isdir(os.path.join(directory, name)):
+            tiles.append(DummyTile(name))
     return tiles
 
 def cycle_list(tlist,direction):
@@ -79,28 +78,17 @@ class DummyTile(object):
     def __init__(self,filename):
         self.filename = filename
         head, tail = os.path.split(filename)
-        tail = tail[:tail.rfind(".")]
         
-        self.rarity = int(tail[4])
+        self.rarity = int(5)
         
         self.sides = []
         
-        for side in tail[:4]:
+        for side in filename:
+            side = side.lower()
             if not side in SIDE_TYPES:
-                raise TileLoadError("Invalid Side Data: "+tail)
+                raise TileLoadError("Invalid Side Data: "+filename)
             else:
                 self.sides.append(side)
-        
-        self.links = [[x+1] for x in range(len(self.sides)) if self.sides[x] != 'g']
-        for link in tail[6:].split("-"):
-            link = [int(x) for x in list(link)]
-            if link:
-                if max(link) > len(self.sides) and min(link) > 0:
-                    raise TileLoadError("Invalid Link Data: "+ tail)
-                else:
-                    for part in link:
-                        if [part] in self.links: self.links.remove([part])
-                    self.links.append(link)
     
     def compare_sides(self,sides):
         sides = sides[:]
@@ -136,7 +124,35 @@ class Tile(DummyTile,pyglet.sprite.Sprite):
     """ Represent the tiles placed into the grid during gameplay """
     def __init__(self,filename):
         DummyTile.__init__(self,filename)
-        image = pyglet.image.load(self.filename)
+        
+        files = []
+        for dirpath, dirnames, filenames in os.walk(os.path.join("res","lotsatiles",filename)):
+            for name in filenames:
+                if ".jpg" in name.lower():
+                    files.append((dirpath,name))
+                else:
+                    print name
+        dir, file = random.choice(files)
+        junk, dirt = os.path.split(dir)
+        
+        self.links = [[x+1] for x in range(len(self.sides)) if self.sides[x] != 'g']
+        
+        for d in dirt:
+            if not d in ["1","2","3","4","-"]:
+                break
+        else:
+            for link in dirt.split("-"):
+                link = [int(x) for x in list(link)]
+                if link:
+                    if max(link) > len(self.sides) and min(link) > 0:
+                        raise TileLoadError("Invalid Link Data: "+ tail)
+                    else:
+                        for part in link:
+                            if [part] in self.links: self.links.remove([part])
+                        self.links.append(link)
+        print self.links
+        print os.path.join(dir, file)
+        image = pyglet.image.load(os.path.join(dir, file))
         image.anchor_x = image.width  // 2
         image.anchor_y = image.height // 2
         pyglet.sprite.Sprite.__init__(self,image)
@@ -198,7 +214,7 @@ class Grid(object):
     def build_perfect_grid(self):
         """ A recursive way to fill the grid with tiles from its current state """
         print "Building Grid"
-        flag = self._build_perfect_grid(load_tiles("res/tiles/"))
+        flag = self._build_perfect_grid(load_tiles("res/lotsatiles/"))
         if flag:
             print "Generated Grid"
         else:
