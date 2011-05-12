@@ -23,6 +23,10 @@ SIDE_TYPES = ["g","c","r"]
 
 CW, CCW = 1, -1
 
+SOUND_PICKUP = pyglet.media.load('res/sounds/pickup.wav', streaming=False)
+SOUND_PLACE = pyglet.media.load('res/sounds/place.wav', streaming=False)
+SOUND_ROTATE = pyglet.media.load('res/sounds/rotate.wav', streaming=False)
+
 pyglet.font.add_file('res/Square 721 BT.TTF')
 square_font = pyglet.font.load('Square721 BT')
 
@@ -686,13 +690,20 @@ class PlayLevel(object):
             if button == pyglet.window.mouse.LEFT:
                 if not self.grid.grab(x,y):
                     self.grid.drop(x,y)
+                    SOUND_PLACE.play()
+                else:
+                    SOUND_PICKUP.play()
+                
+
             else:
                 if self.grid.dragging:
                     self.grid.dragging.rotate(1)
+                    SOUND_ROTATE.play()
                 else:
                     tile = self.grid.tile_at(x,y)
                     if tile:
                         tile.rotate(1)
+                        SOUND_ROTATE.play()
     
             self.update()
             self.on_mouse_motion(x,y,0,0)
@@ -710,6 +721,7 @@ class PlayLevel(object):
                     self.grid.dragging.rotate(CCW)
                 else:
                     self.grid.dragging.rotate(CW)
+                SOUND_ROTATE.play()
             self.update()
         
     def on_key_press(self,symbol, modifiers):
