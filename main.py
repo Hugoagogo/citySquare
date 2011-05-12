@@ -198,7 +198,7 @@ class Grid(object):
     def build_perfect_grid(self):
         """ A recursive way to fill the grid with tiles from its current state """
         print "Building Grid"
-        flag = self._build_perfect_grid(load_tiles("res/tiles/"))
+        flag = self._build_perfect_grid(load_tiles("res/tiles/standard"))
         if flag:
             print "Generated Grid"
         else:
