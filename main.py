@@ -140,6 +140,8 @@ class Tile(DummyTile,pyglet.sprite.Sprite):
     """ Represent the tiles placed into the grid during gameplay """
     def __init__(self,filename):
         DummyTile.__init__(self,filename)
+        gl.glTexParameteri( gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE )
+        gl.glTexParameteri( gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE )
         image = pyglet.image.load(self.filename)
         image.anchor_x = image.width  // 2
         image.anchor_y = image.height // 2
