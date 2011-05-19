@@ -3,12 +3,20 @@ from pyglet import gl
 
 ## TextLayout.content_width
 class Menu(object):
-    def __init__(self,win,x_margin=20, y_margin = 20, top = 30):
+    def __init__(self,win,x_margin=20, y_margin = 30, top = 200):
         self.win = win
         self.x_margin = x_margin
         self.y_margin = y_margin
         self.top = top
         self.items = []
+        
+        self.heading = pyglet.text.Label("Placeholder",
+                  font_name='Square721 BT',
+                  font_size=70,
+                  anchor_x="center",
+                  anchor_y="center",
+                  x=self.win.width//2,
+                  y=self.win.height-100)
     
     def activate(self):
         pass   
@@ -21,11 +29,11 @@ class Menu(object):
             print "ARG", row_width, self.win.width-row_width
             x = (self.win.width-row_width)//2
             for item in row:
-                x += item.text.width//2
+                x += (item.text.width+item.x_pad)//2
                 item.text.y = y
                 item.text.x = x
                 print x,y
-                x += item.text.width//2 + self.x_margin
+                x += (item.text.width+item.x_pad)//2 + self.x_margin
             y -= max(row[0].text.content_height,row[0].text.height)+self.y_margin
                 
 
@@ -42,12 +50,13 @@ class Menu(object):
     def on_draw(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         gl.glColor3ub(255,255,255)
+        self.heading.draw()
         for row in self.items:
             for item in row:
                 item.draw()
     
 class MenuItem(object):
-    def __init__(self, text, func, width=300, height=None, x_pad=10, y_pad=20, size=30, border=True):
+    def __init__(self, text, func, width=300, height=None, x_pad=10, y_pad=10, size=30, border=True):
         self.function = func
         self.x_pad = x_pad
         self.y_pad = y_pad
@@ -68,9 +77,9 @@ class MenuItem(object):
         self.text.draw()
         if self.border:
             x = self.text.x
-            y = self.text.y
-            w = self.text.width//2
-            h = self.text.content_height//2
+            y = self.text.y-2
+            w = (self.text.width+self.x_pad)//2
+            h = (self.text.content_height+self.y_pad)//2
             gl.glBegin(gl.GL_LINE_LOOP)
             gl.glVertex2f(x-w,y-h)
             gl.glVertex2f(x-w,y+h)
