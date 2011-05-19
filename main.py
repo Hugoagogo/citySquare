@@ -11,8 +11,9 @@ import datetime
 import os,sys
 
 import highscores
+from menu import *
 
-WINDOW_SIZE = (768,616) ## None For Fullscreen
+WINDOW_SIZE = (800,600) ## None For Fullscreen
 
 TILE_SIZE = 128
 HALF_TILE_SIZE = TILE_SIZE // 2
@@ -786,168 +787,176 @@ class ZenLevel(PlayLevel):
         self.score_bar.draw()
         if self.show_scores:
             self.grid.draw_scores()
-    
-        
-class Menu(object):
-    def __init__(self, win):
-        self.items = []
-        self.win = win
-        
-        self.pad_x = 150
-        self.pad_y = 25
-        
-        self.heading = pyglet.text.Label("Testing",
-                  font_name='Square721 BT',
-                  font_size=60,
-                  anchor_x="center",
-                  anchor_y="center",
-                  x=self.win.width//2,
-                  y=int(self.win.height*0.85))
-        
-    def activate(self):
-        pass
-    
-    def deactivate(self):
-        pass
 
-    def set_heading(self,text):
-        self.heading.text = text
-    
-    def add_item(self,text,func):
-        item = pyglet.text.Label(text,
-                  font_name='Square721 BT',
-                  font_size=25,
-                  anchor_x="center",
-                  anchor_y="center",
-                  x=self.win.width/2,
-                  y=self.heading.y-140-len(self.items)*3*self.pad_y)
-        self.items.append([item,func])
-        
-    def on_mouse_press(self,x,y,buttons,modifiers):
-        for item, func in self.items:
-            if abs(item.y-y) < self.pad_y and abs(item.x-x) < self.pad_x:
-                func()
-                return
-        
-    def on_draw(self):
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        gl.glColor3ub(255,255,255)
-        self.heading.draw()
-        for label, func in self.items:
-            label.draw()
-            gl.glBegin(gl.GL_LINE_LOOP)
-            gl.glVertex2f(label.x-self.pad_x,label.y-self.pad_y)
-            gl.glVertex2f(label.x+self.pad_x,label.y-self.pad_y)
-            gl.glVertex2f(label.x+self.pad_x,label.y+self.pad_y)
-            gl.glVertex2f(label.x-self.pad_x,label.y+self.pad_y)
-            gl.glEnd()
-        
+def blank(): print "blank"
+
 class MainMenu(Menu):
     def __init__(self,win):
-        super(MainMenu,self).__init__(win)
+        super(MainMenu, self).__init__(win)
         
-        self.set_heading("citySquare")
-        self.heading.font_size = 80
-        self.add_item("Time Challenge",self.time_challenge)
-        self.add_item("Zen Mode",self.zen_mode)
-        self.add_item("High Scores",self.highscores)
-        self.add_item("How to play",self.how_to_play)
-        self.add_item("Quit",sys.exit)
-    
-    def time_challenge(self):
-        self.win.push_scene(TimeLevelMenu(self.win))
-    
-    def zen_mode(self):
-        self.win.push_scene(ZenMenu(self.win))
-        
-    def how_to_play(self):
-        try:
-            os.startfile(os.path.abspath("res/how-to-play.html"))
-        except AttributeError:
-            os.system("open " + os.path.abspath("res/how-to-play.html"))
-        sys.exit()
-        
-    def highscores(self):
-        self.win.push_scene(HighscoreMenu(self.win))
-
-            
-class TimeLevelMenu(Menu):
-    def __init__(self,win):
-        super(TimeLevelMenu,self).__init__(win)
-        self.set_heading("Difficulty")
-        self.add_item("Easy 3x3",self.play3)
-        self.add_item("Challenging 5x5",self.play5)
-        self.add_item("Damn Hard 7x7",self.play7)
-        self.add_item("Nightmare 9x9",self.play9)
-        self.add_item("Back",self.back)
-    
-    def play3(self):
-        self.win.push_scene(PlayLevel(self.win,3,3))
-    def play5(self):
-        self.win.push_scene(PlayLevel(self.win,5,5))
-    def play7(self):
-        self.win.push_scene(PlayLevel(self.win,7,7))
-    def play9(self):
-        self.win.push_scene(PlayLevel(self.win,9,9))
-    def back(self):
-        self.win.pop_scene()
-        
-class ZenMenu(Menu):
-    def __init__(self,win):
-        super(ZenMenu,self).__init__(win)
-        self.set_heading("Difficulty")
-        self.add_item("+",self.increase)
-        self.add_item("Play 5x5",self.play)
-        self.add_item("-",self.decrease)
-        self.add_item("Back",self.back)
-        self.difficulty = 5
-    
-    def decrease(self):
-        self.difficulty = max(3,self.difficulty-1)
-        self.items[1][0].text = "Play %dx%d"%(self.difficulty,self.difficulty)
-    def increase(self):
-        self.difficulty = min(9,self.difficulty+1)
-        self.items[1][0].text = "Play %dx%d"%(self.difficulty,self.difficulty)
-    def play(self):
-        self.win.push_scene(ZenLevel(self.win,self.difficulty,self.difficulty))
-    def back(self):
-        self.win.pop_scene()
-        
-class HighscoreMenu(Menu):
-    def __init__(self,win):
-        super(HighscoreMenu,self).__init__(win)
-        self.set_heading("Highscores")
-        self.add_item("+",self.increase)
-        self.add_item("View for 5x5",self.play)
-        self.add_item("-",self.decrease)
-        self.add_item("Back",self.back)
-        self.difficulty = 5
-    
-    def decrease(self):
-        self.difficulty = max(3,self.difficulty-1)
-        self.items[1][0].text = "View for %dx%d"%(self.difficulty,self.difficulty)
-    def increase(self):
-        self.difficulty = min(9,self.difficulty+1)
-        self.items[1][0].text = "View for %dx%d"%(self.difficulty,self.difficulty)
-    def play(self):
-        self.win.push_scene(HighScores(self.win,self.difficulty))
-    def back(self):
-        self.win.pop_scene()
-    
-        
-class PauseMenu(Menu):
-    def __init__(self,win,game):
-        super(PauseMenu,self).__init__(win)
-        self.game = game
-        self.set_heading("Paused")
-        self.add_item("Resume",self.resume)
-        self.add_item("End Game",self.end_game)
-        self.add_item("Quit to Desktop",sys.exit)
-    def end_game(self):
-        self.win.pop_scene()
-        self.game.end()
-    def resume(self):
-        self.win.pop_scene()
+        self.add_items([MenuItem("Testing",blank)])
+        self.add_items([MenuItem("Right",blank),MenuItem("Left",blank)])
+        self.add_items([MenuItem("-",blank,width=50),MenuItem("NUMBER",blank,width=200),MenuItem("+",blank,width = 50)])
+#class Menu(object):
+#    def __init__(self, win):
+#        self.items = []
+#        self.win = win
+#        
+#        self.pad_x = 150
+#        self.pad_y = 25
+#        
+#        self.heading = pyglet.text.Label("Testing",
+#                  font_name='Square721 BT',
+#                  font_size=60,
+#                  anchor_x="center",
+#                  anchor_y="center",
+#                  x=self.win.width//2,
+#                  y=int(self.win.height*0.85))
+#        
+#    def activate(self):
+#        pass
+#    
+#    def deactivate(self):
+#        pass
+#
+#    def set_heading(self,text):
+#        self.heading.text = text
+#    
+#    def add_item(self,text,func):
+#        item = pyglet.text.Label(text,
+#                  font_name='Square721 BT',
+#                  font_size=25,
+#                  anchor_x="center",
+#                  anchor_y="center",
+#                  x=self.win.width/2,
+#                  y=self.heading.y-140-len(self.items)*3*self.pad_y)
+#        self.items.append([item,func])
+#        
+#    def on_mouse_press(self,x,y,buttons,modifiers):
+#        for item, func in self.items:
+#            if abs(item.y-y) < self.pad_y and abs(item.x-x) < self.pad_x:
+#                func()
+#                return
+#        
+#    def on_draw(self):
+#        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+#        gl.glColor3ub(255,255,255)
+#        self.heading.draw()
+#        for label, func in self.items:
+#            label.draw()
+#            gl.glBegin(gl.GL_LINE_LOOP)
+#            gl.glVertex2f(label.x-self.pad_x,label.y-self.pad_y)
+#            gl.glVertex2f(label.x+self.pad_x,label.y-self.pad_y)
+#            gl.glVertex2f(label.x+self.pad_x,label.y+self.pad_y)
+#            gl.glVertex2f(label.x-self.pad_x,label.y+self.pad_y)
+#            gl.glEnd()
+#        
+#class MainMenu(Menu):
+#    def __init__(self,win):
+#        super(MainMenu,self).__init__(win)
+#        
+#        self.set_heading("citySquare")
+#        self.heading.font_size = 80
+#        self.add_item("Time Challenge",self.time_challenge)
+#        self.add_item("Zen Mode",self.zen_mode)
+#        self.add_item("High Scores",self.highscores)
+#        self.add_item("How to play",self.how_to_play)
+#        self.add_item("Quit",sys.exit)
+#    
+#    def time_challenge(self):
+#        self.win.push_scene(TimeLevelMenu(self.win))
+#    
+#    def zen_mode(self):
+#        self.win.push_scene(ZenMenu(self.win))
+#        
+#    def how_to_play(self):
+#        try:
+#            os.startfile(os.path.abspath("res/how-to-play.html"))
+#        except AttributeError:
+#            os.system("open " + os.path.abspath("res/how-to-play.html"))
+#        sys.exit()
+#        
+#    def highscores(self):
+#        self.win.push_scene(HighscoreMenu(self.win))
+#
+#            
+#class TimeLevelMenu(Menu):
+#    def __init__(self,win):
+#        super(TimeLevelMenu,self).__init__(win)
+#        self.set_heading("Difficulty")
+#        self.add_item("Easy 3x3",self.play3)
+#        self.add_item("Challenging 5x5",self.play5)
+#        self.add_item("Damn Hard 7x7",self.play7)
+#        self.add_item("Nightmare 9x9",self.play9)
+#        self.add_item("Back",self.back)
+#    
+#    def play3(self):
+#        self.win.push_scene(PlayLevel(self.win,3,3))
+#    def play5(self):
+#        self.win.push_scene(PlayLevel(self.win,5,5))
+#    def play7(self):
+#        self.win.push_scene(PlayLevel(self.win,7,7))
+#    def play9(self):
+#        self.win.push_scene(PlayLevel(self.win,9,9))
+#    def back(self):
+#        self.win.pop_scene()
+#        
+#class ZenMenu(Menu):
+#    def __init__(self,win):
+#        super(ZenMenu,self).__init__(win)
+#        self.set_heading("Difficulty")
+#        self.add_item("+",self.increase)
+#        self.add_item("Play 5x5",self.play)
+#        self.add_item("-",self.decrease)
+#        self.add_item("Back",self.back)
+#        self.difficulty = 5
+#    
+#    def decrease(self):
+#        self.difficulty = max(3,self.difficulty-1)
+#        self.items[1][0].text = "Play %dx%d"%(self.difficulty,self.difficulty)
+#    def increase(self):
+#        self.difficulty = min(9,self.difficulty+1)
+#        self.items[1][0].text = "Play %dx%d"%(self.difficulty,self.difficulty)
+#    def play(self):
+#        self.win.push_scene(ZenLevel(self.win,self.difficulty,self.difficulty))
+#    def back(self):
+#        self.win.pop_scene()
+#        
+#class HighscoreMenu(Menu):
+#    def __init__(self,win):
+#        super(HighscoreMenu,self).__init__(win)
+#        self.set_heading("Highscores")
+#        self.add_item("+",self.increase)
+#        self.add_item("View for 5x5",self.play)
+#        self.add_item("-",self.decrease)
+#        self.add_item("Back",self.back)
+#        self.difficulty = 5
+#    
+#    def decrease(self):
+#        self.difficulty = max(3,self.difficulty-1)
+#        self.items[1][0].text = "View for %dx%d"%(self.difficulty,self.difficulty)
+#    def increase(self):
+#        self.difficulty = min(9,self.difficulty+1)
+#        self.items[1][0].text = "View for %dx%d"%(self.difficulty,self.difficulty)
+#    def play(self):
+#        self.win.push_scene(HighScores(self.win,self.difficulty))
+#    def back(self):
+#        self.win.pop_scene()
+#    
+#        
+#class PauseMenu(Menu):
+#    def __init__(self,win,game):
+#        super(PauseMenu,self).__init__(win)
+#        self.game = game
+#        self.set_heading("Paused")
+#        self.add_item("Resume",self.resume)
+#        self.add_item("End Game",self.end_game)
+#        self.add_item("Quit to Desktop",sys.exit)
+#    def end_game(self):
+#        self.win.pop_scene()
+#        self.game.end()
+#    def resume(self):
+#        self.win.pop_scene()
 
     
 if WINDOW_SIZE == None:
