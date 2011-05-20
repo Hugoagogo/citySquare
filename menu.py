@@ -46,7 +46,11 @@ class Menu(object):
             self.items[row].extend(items)
             
         self._arrange()
-        
+    def on_mouse_press(self,x,y,button,modifiers):
+        for row in self.items:
+            for item in row:
+                if item.point_over(x,y):
+                    item.func()
     def on_draw(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         gl.glColor3ub(255,255,255)
@@ -72,6 +76,14 @@ class MenuItem(object):
                   anchor_y="center",
                   width = width,
                   height = height)
+        
+    def point_over(self,x,y):
+        w = (self.text.width+self.x_pad)//2
+        h = (self.text.content_height+self.y_pad)//2
+        if self.text.x-w <= x <= self.text.x+w and self.text.y-h <= y <= self.text.y+h:
+            return True
+        return False
+        
         
     def draw(self):
         self.text.draw()
