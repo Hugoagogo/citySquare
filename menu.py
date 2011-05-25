@@ -3,7 +3,7 @@ from pyglet import gl
 
 ## TextLayout.content_width
 class Menu(object):
-    def __init__(self,win,x_margin=20, y_margin = 30, top = 200):
+    def __init__(self,win,x_margin=20, y_margin = 20, top = 220):
         self.win = win
         self.x_margin = x_margin
         self.y_margin = y_margin
@@ -25,17 +25,18 @@ class Menu(object):
     def _arrange(self):
         y = self.win.height-self.top
         for row in self.items:
-            row_width = sum([item.text.width for item in row],(len(row)-1)*self.x_margin)
-            print "ARG", row_width, self.win.width-row_width
+            y-= row[0].text.content_height//2
+            row_width = sum([item.text.width + item.x_pad*2 for item in row],(len(row)-1)*self.x_margin)
             x = (self.win.width-row_width)//2
             for item in row:
-                x += (item.text.width+item.x_pad)//2
+                x += item.text.width//2 +item.x_pad
                 item.text.y = y
                 item.text.x = x
-                print x,y
-                x += (item.text.width+item.x_pad)//2 + self.x_margin
-            y -= max(row[0].text.content_height,row[0].text.height)+self.y_margin
+                x += item.text.width//2 + self.x_margin + item.x_pad
+            y -= row[0].text.content_height//2 + row[0].y_pad + self.y_margin
                 
+    def set_heading(self,heading):
+        self.heading.text = heading
 
     def add_items(self,items,row=None):
         if type(items) != list:
@@ -50,7 +51,7 @@ class Menu(object):
         for row in self.items:
             for item in row:
                 if item.point_over(x,y):
-                    item.func()
+                    item.function()
     def on_draw(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         gl.glColor3ub(255,255,255)
@@ -60,7 +61,7 @@ class Menu(object):
                 item.draw()
     
 class MenuItem(object):
-    def __init__(self, text, func, width=300, height=None, x_pad=10, y_pad=10, size=30, border=True):
+    def __init__(self, text, func, width=360, height=None, x_pad=10, y_pad=5, size=30, border=True):
         self.function = func
         self.x_pad = x_pad
         self.y_pad = y_pad
@@ -78,8 +79,8 @@ class MenuItem(object):
                   height = height)
         
     def point_over(self,x,y):
-        w = (self.text.width+self.x_pad)//2
-        h = (self.text.content_height+self.y_pad)//2
+        w = (self.text.width)//2 + self.x_pad
+        h = (self.text.content_height)//2 + self.y_pad
         if self.text.x-w <= x <= self.text.x+w and self.text.y-h <= y <= self.text.y+h:
             return True
         return False
@@ -90,8 +91,8 @@ class MenuItem(object):
         if self.border:
             x = self.text.x
             y = self.text.y-2
-            w = (self.text.width+self.x_pad)//2
-            h = (self.text.content_height+self.y_pad)//2
+            w = self.text.width//2 + self.x_pad
+            h = self.text.content_height//2 + self.y_pad
             gl.glBegin(gl.GL_LINE_LOOP)
             gl.glVertex2f(x-w,y-h)
             gl.glVertex2f(x-w,y+h)
