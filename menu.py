@@ -34,7 +34,7 @@ class Menu(object):
                 item.text.x = x
                 x += item.text.width//2 + self.x_margin + item.x_pad
             y -= row[0].text.content_height//2 + row[0].y_pad + self.y_margin
-                
+
     def set_heading(self,heading):
         self.heading.text = heading
 
@@ -61,7 +61,7 @@ class Menu(object):
                 item.draw()
     
 class MenuItem(object):
-    def __init__(self, text, func, width=360, height=None, x_pad=10, y_pad=5, size=30, border=True):
+    def __init__(self, text, func, width=360, height=None, x_pad=10, y_pad=5, size=30, border=True, multiline=False):
         self.function = func
         self.x_pad = x_pad
         self.y_pad = y_pad
@@ -76,7 +76,8 @@ class MenuItem(object):
                   #halign = "center",
                   anchor_y="center",
                   width = width,
-                  height = height)
+                  height = height,
+                  multiline = multiline)
         
     def point_over(self,x,y):
         w = (self.text.width)//2 + self.x_pad

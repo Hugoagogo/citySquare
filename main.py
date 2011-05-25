@@ -788,79 +788,16 @@ class ZenLevel(PlayLevel):
         if self.show_scores:
             self.grid.draw_scores()
 
-def blank(): print "blank"
-
-class MainMenu(Menu):
-    def __init__(self,win):
-        super(MainMenu, self).__init__(win)
-        
-        self.add_items([MenuItem("Testing",blank)])
-        self.add_items([MenuItem("Right",blank),MenuItem("Left",blank)])
-        self.add_items([MenuItem("-",blank,width=50),MenuItem("NUMBER",blank,width=200),MenuItem("+",blank,width = 50)])
-#class Menu(object):
-#    def __init__(self, win):
-#        self.items = []
-#        self.win = win
-#        
-#        self.pad_x = 150
-#        self.pad_y = 25
-#        
-#        self.heading = pyglet.text.Label("Testing",
-#                  font_name='Square721 BT',
-#                  font_size=60,
-#                  anchor_x="center",
-#                  anchor_y="center",
-#                  x=self.win.width//2,
-#                  y=int(self.win.height*0.85))
-#        
-#    def activate(self):
-#        pass
-#    
-#    def deactivate(self):
-#        pass
-#
-#    def set_heading(self,text):
-#        self.heading.text = text
-#    
-#    def add_item(self,text,func):
-#        item = pyglet.text.Label(text,
-#                  font_name='Square721 BT',
-#                  font_size=25,
-#                  anchor_x="center",
-#                  anchor_y="center",
-#                  x=self.win.width/2,
-#                  y=self.heading.y-140-len(self.items)*3*self.pad_y)
-#        self.items.append([item,func])
-#        
-#    def on_mouse_press(self,x,y,buttons,modifiers):
-#        for item, func in self.items:
-#            if abs(item.y-y) < self.pad_y and abs(item.x-x) < self.pad_x:
-#                func()
-#                return
-#        
-#    def on_draw(self):
-#        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-#        gl.glColor3ub(255,255,255)
-#        self.heading.draw()
-#        for label, func in self.items:
-#            label.draw()
-#            gl.glBegin(gl.GL_LINE_LOOP)
-#            gl.glVertex2f(label.x-self.pad_x,label.y-self.pad_y)
-#            gl.glVertex2f(label.x+self.pad_x,label.y-self.pad_y)
-#            gl.glVertex2f(label.x+self.pad_x,label.y+self.pad_y)
-#            gl.glVertex2f(label.x-self.pad_x,label.y+self.pad_y)
-#            gl.glEnd()
-#        
 class MainMenu(Menu):
     def __init__(self,win):
         super(MainMenu,self).__init__(win)
         
         self.set_heading("citySquare")
         self.heading.font_size = 80
+        self.add_items(MenuItem("How to play",self.how_to_play))
         self.add_items(MenuItem("Time Challenge",self.time_challenge))
         self.add_items(MenuItem("Zen Mode",self.zen_mode))
         self.add_items(MenuItem("High Scores",self.highscores))
-        self.add_items(MenuItem("How to play",self.how_to_play))
         self.add_items(MenuItem("Quit",sys.exit))
     
     def time_challenge(self):
@@ -870,11 +807,12 @@ class MainMenu(Menu):
         self.win.push_scene(ZenMenu(self.win))
         
     def how_to_play(self):
-        try:
-            os.startfile(os.path.abspath("res/how-to-play.html"))
-        except AttributeError:
-            os.system("open " + os.path.abspath("res/how-to-play.html"))
-        sys.exit()
+        self.win.push_scene(HowToPlayMenu(self.win))
+        #try:
+        #    os.startfile(os.path.abspath("res/how-to-play.html"))
+        #except AttributeError:
+        #    os.system("open " + os.path.abspath("res/how-to-play.html"))
+        #sys.exit()
         
     def highscores(self):
         self.win.push_scene(HighscoreMenu(self.win))
@@ -930,10 +868,10 @@ class HighscoreMenu(Menu):
     
     def decrease(self):
         self.difficulty = max(3,self.difficulty-1)
-        self.items[1][0].text = "View for %dx%d"%(self.difficulty,self.difficulty)
+        self.items[0][1].text.text = "View for %dx%d"%(self.difficulty,self.difficulty)
     def increase(self):
         self.difficulty = min(9,self.difficulty+1)
-        self.items[1][0].text = "View for %dx%d"%(self.difficulty,self.difficulty)
+        self.items[0][1].text.text = "View for %dx%d"%(self.difficulty,self.difficulty)
     def play(self):
         self.win.push_scene(HighScores(self.win,self.difficulty))
     def back(self):
@@ -953,7 +891,37 @@ class PauseMenu(Menu):
         self.game.end()
     def resume(self):
         self.win.pop_scene()
+        
+class HowToPlayMenu(Menu):
+    def __init__(self,win):
+        super(HowToPlayMenu,self).__init__(win,top=160)
+        self.set_heading("How To Play")
+        self.add_items(MenuItem(
+"""The aim of citySquare is to match up the tiles from the tray on the right on the grid as best as is possible in a given amount of time. Points are awarded for completed cities (the somewhat poorly drawn orange bits) and roads. They are however taken away if the city or road is incomplete.
 
+Also note that scoring is skewed to give more points to large cities, so you should really be trying to make your cities as large as possible within the time limit. Finally, ensure that all of your tiles match up, and that any tiles touching the edge of the grid are grass, any invalid tiles are ignored for scoring purposes.
+Don't waste those tiles!""",int,width=650,size=15,border=False,multiline=True))
+        self.add_items([MenuItem("Back",self.back),MenuItem("Controls",self.controls)])
+    def back(self):
+        self.win.pop_scene()
+    def controls(self):
+        self.win.pop_scene()
+        self.win.push_scene(ControlsMenu(self.win))
+
+class ControlsMenu(Menu):
+    def __init__(self,win):
+        super(ControlsMenu,self).__init__(win,top=160)
+        self.set_heading("Controls")
+        self.add_items(MenuItem(
+"""The controls are fairly straigtforward, click a tile to pick it up click again to drop it. Dragging and dropping will not work, you actually have to click and let go.
+
+Tiles can be rotated by right-clicking them or by by picking up a tile and scrolling. All of the tiles currently on the grid can be shifted around using the arrow keys. To view a breakdown of your score so far you can press hold tab.""",int,width=650,size=15,border=False,multiline=True))
+        self.add_items([MenuItem("Back",self.back),MenuItem("How to Play",self.howtoplay)])
+    def back(self):
+        self.win.pop_scene()
+    def howtoplay(self):
+        self.win.pop_scene()
+        self.win.push_scene(HowToPlayMenu(self.win))
     
 if WINDOW_SIZE == None:
     win = GameWindow(fullscreen=True)
