@@ -15,7 +15,7 @@ from menu import *
 
 WINDOW_SIZE = (800,600) ## None For Fullscreen
 
-TILE_SIZE = 128
+TILE_SIZE = 256
 HALF_TILE_SIZE = TILE_SIZE // 2
 TRAY_SCALE = .5
 DRAG_SCALE = .9
@@ -36,6 +36,7 @@ def load_tiles(directory):
     tiles = []
     for dirpath, dirnames, filenames in os.walk(directory):
         for file in filenames:
+            file = file.lower()
             if file[file.rfind("."):] == ".png":
                 tiles.append(DummyTile(os.path.join(dirpath,file)))
     return tiles
@@ -161,8 +162,8 @@ class Tile(DummyTile,pyglet.sprite.Sprite):
         return x-d <= self.x <= x+d and y-d <= self.y <= y+d
     
     def draw(self,x,y,scale=1):
-        self.x = int(x)
-        self.y = int(y)
+        self.x = x
+        self.y = y
         self.scale = scale
         pyglet.sprite.Sprite.draw(self)
         
@@ -205,7 +206,7 @@ class Grid(object):
     def build_perfect_grid(self):
         """ A recursive way to fill the grid with tiles from its current state """
         print "Building Grid"
-        flag = self._build_perfect_grid(load_tiles("res/tiles/standard"))
+        flag = self._build_perfect_grid(load_tiles("res/tiles/new"))
         if flag:
             print "Generated Grid"
         else:
@@ -427,10 +428,10 @@ class Grid(object):
             for x in range(self.width):
                 gl.glBegin(gl.GL_QUADS)
                 gl.glColor3ub(*[30+((x+y)%2)*50]*3)
-                gl.glVertex2f(int(x*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
-                gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
-                gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
-                gl.glVertex2f(int(x*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
+                gl.glVertex2f(x*TILE_SIZE*self.scale,y*TILE_SIZE*self.scale)
+                gl.glVertex2f((x+1)*TILE_SIZE*self.scale,y*TILE_SIZE*self.scale)
+                gl.glVertex2f((x+1)*TILE_SIZE*self.scale,(y+1)*TILE_SIZE*self.scale)
+                gl.glVertex2f(x*TILE_SIZE*self.scale,(y+1)*TILE_SIZE*self.scale)
                 gl.glEnd()
                 
         
@@ -441,10 +442,10 @@ class Grid(object):
                     if self(x,y).highlighted:
                         gl.glBegin(gl.GL_QUADS)
                         gl.glColor4ub(*[255,0,0,180])
-                        gl.glVertex2f(int(x*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
-                        gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int(y*TILE_SIZE*self.scale))
-                        gl.glVertex2f(int((x+1)*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
-                        gl.glVertex2f(int(x*TILE_SIZE*self.scale),int((y+1)*TILE_SIZE*self.scale))
+                        gl.glVertex2f(x*TILE_SIZE*self.scale,y*TILE_SIZE*self.scale)
+                        gl.glVertex2f((x+1)*TILE_SIZE*self.scale,y*TILE_SIZE*self.scale)
+                        gl.glVertex2f((x+1)*TILE_SIZE*self.scale,(y+1)*TILE_SIZE*self.scale)
+                        gl.glVertex2f(x*TILE_SIZE*self.scale,(y+1)*TILE_SIZE*self.scale)
                         gl.glEnd()
         
         row = 0
