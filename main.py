@@ -165,6 +165,7 @@ class Tile(DummyTile,pyglet.sprite.Sprite):
         self.x = x
         self.y = y
         self.scale = scale
+        print scale
         pyglet.sprite.Sprite.draw(self)
         
 class Grid(object):
@@ -243,7 +244,6 @@ class Grid(object):
                 for side in link:
                     side -= 1
                     dx, dy = x+self.deltas[side][0], y+self.deltas[side][1]
-                    #print self.deltas[side], side, side+1, cycle_int(side+1,2,4)+1
                     self._connected_to(dx,dy,attached,cycle_int(side+1,2,4),tile.sides[side])
                 all_attached.append([tile.sides[link[0]-1],attached])
             
@@ -438,7 +438,7 @@ class Grid(object):
         for y in range(self.height):
             for x in range(self.width):
                 if self(x,y):
-                    self(x,y).draw(int((x+0.5)*TILE_SIZE*self.scale),int((y+0.5)*TILE_SIZE*self.scale),self.scale) 
+                    self(x,y).draw((x+0.5)*TILE_SIZE*self.scale,(y+0.5)*TILE_SIZE*self.scale,self.scale) 
                     if self(x,y).highlighted:
                         gl.glBegin(gl.GL_QUADS)
                         gl.glColor4ub(*[255,0,0,180])
@@ -648,14 +648,16 @@ class PlayLevel(object):
     def __init__(self,win,x,y):
         self.size = min((x,y))
         self.win = win
-        self.grid = Grid(self.win,Rect((0,20),(self.win.width,self.win.height-40)),x,y)
+        height = self.size*int((self.win.height-40)/self.size)
+        bheight = (self.win.height-height)/2
+        self.grid = Grid(self.win,Rect((0,bheight),(self.win.width,height)),x,y)
         self.grid.build_perfect_grid()
         
         allowed_time = 60*max((x,y))
         #allowed_time = 5
         
-        self.score_bar = ProgressBar(Rect((0,0),(self.win.width,20)),0,self.grid.max,(0,255,0),(255,0,0),0)
-        self.time_bar = TimeBar(Rect((0,self.win.height-20),(self.win.width,20)),0,allowed_time,(0,255,0),(255,0,0))
+        self.score_bar = ProgressBar(Rect((0,0),(self.win.width,bheight)),0,self.grid.max,(0,255,0),(255,0,0),0)
+        self.time_bar = TimeBar(Rect((0,self.win.height-bheight),(self.win.width,bheight)),0,allowed_time,(0,255,0),(255,0,0))
         self.grid.degrid_all()
         
         self.show_scores = False
@@ -767,10 +769,12 @@ class ZenLevel(PlayLevel):
     def __init__(self,win,x,y):
         self.win = win
         self.size = min((x,y))
-        self.grid = Grid(self.win,Rect((0,20),(self.win.width,self.win.height-20)),x,y)
+        height = self.size*int((self.win.height-20)/self.size)
+        bheight = (self.win.height-height)
+        self.grid = Grid(self.win,Rect((0,bheight),(self.win.width,height)),x,y)
         self.grid.build_perfect_grid()
         
-        self.score_bar = ProgressBar(Rect((0,0),(self.win.width,20)),0,self.grid.max,(0,255,0),(255,0,0),0)
+        self.score_bar = ProgressBar(Rect((0,0),(self.win.width,bheight)),0,self.grid.max,(0,255,0),(255,0,0),0)
         self.grid.degrid_all()
         
         self.show_scores = False
