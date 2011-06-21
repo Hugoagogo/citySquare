@@ -8,6 +8,8 @@ import time
 import pickle
 import datetime
 
+from easygui import enterbox as dlg_get_string
+
 import os,sys
 
 import highscores
@@ -578,13 +580,16 @@ class HighScores(object):
         scores = self.scores.gettopscores(10)
         stext = "{tab_stops [420]}{font_name \"Square721 BT\"}{color (255,255,255,255)}{font_size 40}HighScores for %dx%d{font_size 5}\n\n{font_size 20}"%(self.size, self.size)
         for score, name in scores:
-            stext += "{font_size 20}%s  {underline (255,255,255,190)}\t{underline None}  %.4f{font_size 5}\n\n"%(name,score)
+            stext += "{font_size 20}%s  {underline (255,255,255,190)}\t{underline None}  %s{font_size 5}\n\n"%(name,str(int(score/60))+":"+str(int(score%60)).zfill(2))
         stext += "{font_size 12}Press any key to return to menu"
         self.text.document = pyglet.text.decode_attributed(stext)
         
     def add(self,name,score):
         self.scores.addscore(name,score)
         self.update_text()
+        
+    def on_table(self,score):
+        return self.scores.on_table(score)
         
     def on_draw(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
@@ -672,17 +677,17 @@ class PlayLevel(object):
             self.end()
             self.time_bar.val = 0
         elif len(self.grid.tray) == 0 and self.grid.dragging == None and len(self.grid.invalids()) == 0:
+            scores = HighScores(self.win,self.size)
+            new_score = self.time_bar.val
+            if scores.on_table(new_score):
+                player = dlg_get_string(title="New Highscore",msg="Enter your name")
+                scores.add(player,new_score)
             self.end()
             
     def end(self):
         pyglet.clock.unschedule(self.tick_down)
         self.grid.highlight_invalids()
         self.show_scores = True
-        scores = HighScores(self.win,self.size)
-        t = datetime.datetime.today()
-        player = t.strftime("%I:%M%p %d-%m-%y")
-        
-        scores.add(player,float(100*self.grid.score(True))/self.grid.max)
             
     def update(self):
         self.score_bar.val = self.grid.score()

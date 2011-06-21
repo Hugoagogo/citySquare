@@ -59,6 +59,15 @@ class HighScoreFile:
 
     def gethighestscore(self):
         print "Not implimented"
+        
+    def on_table(self,score):
+        print score,self.results[:10]
+        if len(self.results[:10]) < 10:
+            return True
+        for result in self.results[:10]:
+            if score > result[0]:
+                return True
+        return False
 
     def gettopscores(self,scores):
         """Returns top X scores"""
