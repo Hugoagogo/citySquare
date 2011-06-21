@@ -59,7 +59,7 @@ def cycle_int(tint,direction,cap):
 
 def custom_shuffle(tiles):
     """ My custom method to sort tiles in a weighted way """
-    tile_vals = [random.triangular(0, 5, x.rarity/2) for x in tiles]
+    tile_vals = [random.triangular(0, 5, x.rarity) for x in tiles]
     return zip(*sorted(zip(tile_vals,tiles)))[1]
     
 def cmp_tilelist(a, b):
@@ -671,7 +671,7 @@ class PlayLevel(object):
         if self.time_bar.val < 0:
             self.end()
             self.time_bar.val = 0
-        elif len(self.grid.tray) == 0 and len(self.grid.invalids()):
+        elif len(self.grid.tray) == 0 and self.grid.dragging == None and len(self.grid.invalids()) == 0:
             self.end()
             
     def end(self):
