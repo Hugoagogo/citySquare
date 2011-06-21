@@ -165,7 +165,6 @@ class Tile(DummyTile,pyglet.sprite.Sprite):
         self.x = x
         self.y = y
         self.scale = scale
-        print scale
         pyglet.sprite.Sprite.draw(self)
         
 class Grid(object):
@@ -358,6 +357,7 @@ class Grid(object):
                 if tile:
                     if tile.compare_sides(self.edges_at(x,y)) != 0:
                         tile.highlighted = True
+                        invalid = True
                     else:
                         tile.highlighted = False
             
@@ -595,8 +595,6 @@ class HighScores(object):
         
     def on_mouse_press(self,x,y,buttons,modifiers):
         self.win.pop_scene()
-        
-        
 
 class GameWindow(pyglet.window.Window):
     def __init__(self,*args, **kwargs):
@@ -673,7 +671,7 @@ class PlayLevel(object):
         if self.time_bar.val < 0:
             self.end()
             self.time_bar.val = 0
-        elif self.score_bar.val >= self.score_bar.max:
+        elif len(self.grid.tray) == 0 and len(self.grid.invalids()):
             self.end()
             
     def end(self):
@@ -782,9 +780,17 @@ class ZenLevel(PlayLevel):
     def activate(self):
         pass
     
+    def end(self):
+        pyglet.clock.unschedule(self.tick_down)
+        self.grid.highlight_invalids()
+        self.show_scores = True
+    
     def update(self):
         super(ZenLevel,self).update()
         self.grid.highlight_invalids()
+        
+        if len(self.grid.tray) == 0 and self.grid.dragging == None and len(self.grid.invalids()) == 0:
+            self.end()
         
     def on_draw(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
@@ -848,7 +854,7 @@ class ZenMenu(Menu):
     def __init__(self,win):
         super(ZenMenu,self).__init__(win,top=270)
         self.set_heading("Difficulty")
-        self.add_items([MenuItem("-",self.decrease,width=30),MenuItem("Play 5x5",self.play),MenuItem("+",self.increase,width=30)])
+        self.add_items([MenuItem("Smaller",self.decrease,width=150),MenuItem("Play 5x5",self.play),MenuItem("Bigger",self.increase,width=150)])
         self.add_items(MenuItem("Back",self.back))
         self.difficulty = 5
     
