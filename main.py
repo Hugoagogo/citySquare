@@ -699,7 +699,8 @@ class PlayLevel(object):
                 for sound in SOUNDS_PLAYING:
                     sound.pause()
                 player = dlg_get_string(title="New Highscore",msg="Enter your name")
-                scores.add(player,new_score)
+                if player:    
+                    scores.add(player,new_score)
             self.end()
             
     def end(self):
