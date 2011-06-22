@@ -36,9 +36,7 @@ def play_sound(sound):
     def end_sound(player):
         global SOUNDS_PLAYING
         SOUNDS_PLAYING.remove(player)
-        print len(SOUNDS_PLAYING)
     global SOUNDS_PLAYING
-    SOUNDS_PLAYING
     player = pyglet.media.Player()
     SOUNDS_PLAYING.append(player)
     player.push_handlers(on_eos=lambda:end_sound(player))
@@ -896,19 +894,21 @@ class ZenMenu(Menu):
 class HighscoreMenu(Menu):
     def __init__(self,win):
         super(HighscoreMenu,self).__init__(win)
+        self.levels = [(3,"Easy 3x3"),(5,"Challenging 5x5"),(7, "Damn Hard 7x7"),(9,"Nightmare 9x9")]
+        self.level = 0
         self.set_heading("Highscores")
-        self.add_items([MenuItem("-",self.decrease,width=30),MenuItem("View for 5x5",self.play),MenuItem("+",self.increase,width=30)])
+        self.add_items([MenuItem("-",self.decrease,width=30),MenuItem("Easy 3x3",self.play),MenuItem("+",self.increase,width=30)])
         self.add_items(MenuItem("Back",self.back))
         self.difficulty = 5
     
     def decrease(self):
-        self.difficulty = max(3,self.difficulty-1)
-        self.items[0][1].text.text = "View for %dx%d"%(self.difficulty,self.difficulty)
+        self.level = max(0,self.level-1)
+        self.items[0][1].text.text = self.levels[self.level][1]
     def increase(self):
-        self.difficulty = min(9,self.difficulty+1)
-        self.items[0][1].text.text = "View for %dx%d"%(self.difficulty,self.difficulty)
+        self.level = min(3,self.level+1)
+        self.items[0][1].text.text = self.levels[self.level][1]
     def play(self):
-        self.win.push_scene(HighScores(self.win,self.difficulty))
+        self.win.push_scene(HighScores(self.win,self.levels[self.level][0]))
     def back(self):
         self.win.pop_scene()
     
