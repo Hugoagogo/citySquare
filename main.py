@@ -30,6 +30,21 @@ SOUND_PICKUP = pyglet.media.load('res/sounds/pickup.wav', streaming=False)
 SOUND_PLACE = pyglet.media.load('res/sounds/place.wav', streaming=False)
 SOUND_ROTATE = pyglet.media.load('res/sounds/rotate.wav', streaming=False)
 
+SOUNDS_PLAYING = []
+
+def play_sound(sound):
+    def end_sound(player):
+        global SOUNDS_PLAYING
+        SOUNDS_PLAYING.remove(player)
+        print len(SOUNDS_PLAYING)
+    global SOUNDS_PLAYING
+    SOUNDS_PLAYING
+    player = pyglet.media.Player()
+    SOUNDS_PLAYING.append(player)
+    player.push_handlers(on_eos=lambda:end_sound(player))
+    player.queue(sound)
+    player.play()
+
 pyglet.font.add_file('res/Square 721 BT.TTF')
 square_font = pyglet.font.load('Square721 BT')
 
@@ -680,6 +695,9 @@ class PlayLevel(object):
             scores = HighScores(self.win,self.size)
             new_score = self.time_bar.val
             if scores.on_table(new_score):
+                self.on_draw()
+                for sound in SOUNDS_PLAYING:
+                    sound.pause()
                 player = dlg_get_string(title="New Highscore",msg="Enter your name")
                 scores.add(player,new_score)
             self.end()
@@ -699,20 +717,20 @@ class PlayLevel(object):
             if button == pyglet.window.mouse.LEFT:
                 if not self.grid.grab(x,y):
                     self.grid.drop(x,y)
-                    SOUND_PLACE.play()
+                    play_sound(SOUND_PLACE)
                 else:
-                    SOUND_PICKUP.play()
+                    play_sound(SOUND_PICKUP)
                 
 
             else:
                 if self.grid.dragging:
                     self.grid.dragging.rotate(1)
-                    SOUND_ROTATE.play()
+                    play_sound(SOUND_ROTATE)
                 else:
                     tile = self.grid.tile_at(x,y)
                     if tile:
                         tile.rotate(1)
-                        SOUND_ROTATE.play()
+                        play_sound(SOUND_ROTATE)
     
             self.update()
             self.on_mouse_motion(x,y,0,0)
@@ -730,7 +748,7 @@ class PlayLevel(object):
                     self.grid.dragging.rotate(CCW)
                 else:
                     self.grid.dragging.rotate(CW)
-                SOUND_ROTATE.play()
+                play_sound(SOUND_ROTATE)
             self.update()
         
     def on_key_press(self,symbol, modifiers):
