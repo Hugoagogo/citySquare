@@ -33,6 +33,7 @@ SOUND_ROTATE = pyglet.media.load('res/sounds/rotate.wav', streaming=False)
 SOUNDS_PLAYING = []
 
 def play_sound(sound):
+    """ A simple little sound manager for keeping track of playing sounds """
     def end_sound(player):
         global SOUNDS_PLAYING
         SOUNDS_PLAYING.remove(player)
@@ -78,14 +79,17 @@ def custom_shuffle(tiles):
     return zip(*sorted(zip(tile_vals,tiles)))[1]
     
 def cmp_tilelist(a, b):
+    """ Used for sorting tiles """
     if a == None: return 10000
     elif b == None: return -10000
     else: return (a.x*100+a.y)-(b.x*100+b.y)
 
 def build_2darray(x,y):
+    """ Simple Function to build a 2d array """
     return [[None]*x for y in range(y)]
     
 def city_score(num_tiles):
+    """ A custom function that is used to order """
     return sum(range(num_tiles+1))
 
 class TileLoadError(Exception):
@@ -124,6 +128,7 @@ class DummyTile(object):
                     self.links.append(link)
     
     def compare_sides(self,sides):
+        """ Checks to see if two tiles have matching sides in any rotation"""
         sides = sides[:]
         for x in range(len(self.sides)):
             if self.same_sides(sides):
@@ -133,16 +138,19 @@ class DummyTile(object):
             return -1
 
     def same_sides(self,sides):
+        """ Checks to see if two tils have matching sides in the same orientation """
         for s1, s2 in zip(self.sides,sides):
             if not (s1 == s2 or s1 == "#" or s2 == "#"):
                 return False
         return True
         
     def rotate(self,direction):
+        """ Rotates a tile """
         self.sides = cycle_list(self.sides,direction)
         self.links = [[cycle_int(y,direction,len(self.sides)) for y in x] for x in self.links]
         
     def print_square(self):
+        """ An ascii representation of a tile """
         return [
             " "+str(self.sides[0])+" ",
             str(self.sides[3])+"#"+str(self.sides[1]),
@@ -167,16 +175,19 @@ class Tile(DummyTile,pyglet.sprite.Sprite):
         self.highlighted = False
         
     def rotate(self,direction):
+        """ Roatates a tile as well as its image """
         super(Tile, self).rotate(direction)
         self.rotation += 90*direction
         self.rotation = self.rotation%360
     
     def point_over(self,x,y):
+        """CHecks if a point is over tile i.e. on a mouse click """
         ## NOTE THIS IS AS IT WAS LAST DRAWN
         d = (self.height//2)
         return x-d <= self.x <= x+d and y-d <= self.y <= y+d
     
     def draw(self,x,y,scale=1):
+        """ Draw the tile at a given scale """
         self.x = x
         self.y = y
         self.scale = scale
@@ -205,6 +216,7 @@ class Grid(object):
         self.scores.y=(self.rect.height/2)+self.rect.y
         
     def tray_init(self,wipe = True):
+        """ Does a whole bunch of calculations for laying out tiles in the tray """
         if wipe: self.tray = []
         self.tray_start_x = self.width*TILE_SIZE*self.scale
         self.tray_width = self.rect.width-self.tray_start_x
@@ -213,6 +225,7 @@ class Grid(object):
         self.tray_max_rows = int(self.rect.height/self.tray_cols_width)
     
     def __call__(self,x,y,tile=-123):
+        """ Provides a alternate way for acessing cells in the grid """
         if 0 <= x < self.width and 0 <= y < self.height:
             if tile != -123:
                 self.grid[y][x] = tile
@@ -231,6 +244,7 @@ class Grid(object):
             
     
     def _build_perfect_grid(self, tiles):
+        """ Does the acutal work of the build_perfect_grid function above """
         tiles = custom_shuffle(tiles)
         for y in range(self.height):
             for x in range(self.width):
@@ -248,6 +262,7 @@ class Grid(object):
         return True
     
     def connected_to(self,x,y):
+        """ Returns all of the tiles attached to a tile via roads, cities ect """
         #print "="*80
         all_attached = []
         tile = self(x,y)
@@ -282,6 +297,7 @@ class Grid(object):
                 attached.append(None)
                 
     def score(self,final=False):
+        """ Calculates scores and sets the text of the score screen """
         score_text = "{color (255,255,255,255)}{font_name Arial}{font_size 20}Score distribution\n\n{font_size 14}"
         cities = []
         unfinished_cities = []
@@ -361,11 +377,13 @@ class Grid(object):
                 self(x,y,None)
                 
     def degrid_invalid(self):
+        """ Pushes any invalid tiles back to the tray """
         for tile, x, y in self.invalids():
             self.tray.append(tile)
             self(x,y,None)
             
     def highlight_invalids(self):
+        """ Sets the highlight state of all tiles """
         for y in range(self.height):
             for x in range(self.width):
                 tile = self(x,y)
@@ -377,6 +395,7 @@ class Grid(object):
                         tile.highlighted = False
             
     def invalids(self):
+        """ Returns a list of all invalid tiles """
         invalids = []
         for y in range(self.height):
             for x in range(self.width):
@@ -425,6 +444,7 @@ class Grid(object):
             return temp
     
     def tile_at(self,x,y):
+        """ Checks if there is a tile at a screen position """
         x -= self.rect.x
         y -= self.rect.y
         for tile in self.tray:
@@ -437,6 +457,7 @@ class Grid(object):
                     return tile        
     
     def draw(self):
+        """ Draws all of the tiles and tray """
         gl.glPushMatrix()
         gl.glTranslated(self.rect.x,self.rect.y,0)
         for y in range(self.height):
@@ -477,6 +498,7 @@ class Grid(object):
         if self.dragging: self.dragging.draw(self.dragging.x,self.dragging.y,self.scale*DRAG_SCALE)
     
     def draw_scores(self):
+        """ Draws the scoreboard """
         gl.glBegin(gl.GL_QUADS)
         gl.glColor4ub(*[0,0,0,180])
         gl.glVertex2f(0,0)
@@ -488,12 +510,13 @@ class Grid(object):
         self.scores.draw()
     
     def screen2grid(self,x,y):
+        """ Converts screen coordnates to grid coordnates """
         x = int(round((((x-self.rect.x)/self.scale)-HALF_TILE_SIZE)/TILE_SIZE))
         y = int(round((((y-self.rect.y)/self.scale)-HALF_TILE_SIZE)/TILE_SIZE))
         return (x,y)
     
     def print_square(self):
-        """ an ascii Representation of the grid """
+        """ An ascii Representation of the grid """
         big = []
         for line in reversed(self.grid):
             reline = []
@@ -504,7 +527,9 @@ class Grid(object):
                     reline.append(["   "]*3)
             big.extend(zip(*reline))
         print "\n".join(("".join(x) for x in big))
+
 class Rect(object):
+    """ A conventient way to store rectangles """
     def __init__(self,pos,size):
         self.pos = pos
         self.x, self.y = pos
@@ -512,6 +537,7 @@ class Rect(object):
         self.width, self.height = size
         
 class ProgressBar(object):
+    """ A simple object to represent and draw progress bars """
     def __init__(self,rect,min,max,start_col,end_col,val=None):
         if val == None: val = max
         self.rect = rect
@@ -569,6 +595,7 @@ class ProgressBar(object):
         self.label.draw()
         
 class TimeBar(ProgressBar):
+    """ Slight change to a standard progress bar that represents val as a time """
     def text(self):
         return str(int(self.val/60))+":"+str(int(self.val%60)).zfill(2)
         
