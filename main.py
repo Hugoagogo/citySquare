@@ -667,6 +667,14 @@ class GameWindow(pyglet.window.Window):
         if hasattr(self.states[-1],"on_draw"):
             self.states[-1].on_draw()
     
+    def on_text(self,*args):
+        if hasattr(self.states[-1],"on_text"):
+            self.states[-1].on_text(*args)
+            
+    def on_text_motion(self,*args):
+        if hasattr(self.states[-1],"on_text_motion"):
+            self.states[-1].on_text_motion(*args)
+    
     def on_mouse_press(self,*args):
         if hasattr(self.states[-1],"on_mouse_press"):
             self.states[-1].on_mouse_press(*args)
@@ -854,11 +862,15 @@ class MainMenu(Menu):
         
         self.set_heading("citySquare")
         self.heading.font_size = 80
+        self.add_items(MenuItem("Test",self.test))
         self.add_items(MenuItem("How to play",self.how_to_play))
         self.add_items(MenuItem("Time Challenge",self.time_challenge))
         self.add_items(MenuItem("Zen Mode",self.zen_mode))
         self.add_items(MenuItem("High Scores",self.highscores))
         self.add_items(MenuItem("Quit",sys.exit))
+        
+    def test(self):
+        self.win.push_scene(NewHighscoreMenu(self.win))
     
     def time_challenge(self):
         self.win.push_scene(TimeLevelMenu(self.win))
@@ -938,7 +950,30 @@ class HighscoreMenu(Menu):
         self.win.push_scene(HighScores(self.win,self.levels[self.level][0]))
     def back(self):
         self.win.pop_scene()
+
+class NewHighscoreMenu(Menu):
+    def __init__(self,win):
+        super(NewHighscoreMenu,self).__init__(win)
+        self.set_heading("Highscores")
+        self.text = EditableMenuItem("",self.Edit,self)
+        self.add_items(self.text)
+        self.add_items(MenuItem("Submit",self.submit))
+        self.add_items(MenuItem("Cancel",self.cancel))
     
+    def on_text(self, text):
+        self.text.on_text(text)
+        
+    def on_text_motion(self, motion):
+        self.text.on_text_motion(motion)
+    
+    def Edit(self):
+        self.text.document.text=""
+    
+    def submit(self):
+        self.win.pop_scene()
+        
+    def cancel(self):
+        self.win.pop_scene()
         
 class PauseMenu(Menu):
     def __init__(self,win,game):

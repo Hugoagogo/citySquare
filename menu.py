@@ -79,6 +79,9 @@ class MenuItem(object):
                   height = height,
                   multiline = multiline)
         
+        font = self.text.document.get_font()
+        self.text.height =  font.ascent - font.descent
+        
     def point_over(self,x,y):
         w = (self.text.width)//2 + self.x_pad
         h = (self.text.content_height)//2 + self.y_pad
@@ -101,3 +104,48 @@ class MenuItem(object):
             gl.glVertex2f(x+w,y-h)
             gl.glEnd()
         
+class EditableMenuItem(MenuItem):
+    def __init__(self, text, func, menu, width=360, height=30, x_pad=10, y_pad=5, size=30, border=True, multiline=False):
+        self.function = func
+        self.menu = menu
+        self.x_pad = x_pad
+        self.y_pad = y_pad
+        self.border = border
+        
+        self.x = self.y = 0
+        
+        self.document = pyglet.text.document.UnformattedDocument(text)
+        self.document.set_style(0,
+                                len(self.document.text),
+                                dict(color=(255, 255, 255, 255),
+                                     font_name='Square721 BT',
+                                     font_size=size,
+                                     align="center")
+                                )
+        font = self.document.get_font()
+
+        self.text = pyglet.text.layout.IncrementalTextLayout(self.document,
+                                                             width = width,
+                                                             height = font.ascent - font.descent,
+                                                             multiline=True)
+        self.text.anchor_x="center"
+        self.text.anchor_y="center"
+        self.caret = pyglet.text.caret.Caret(self.text,color=(255, 255, 255))
+        self.caret.visible=True
+        self.caret.mark=self.caret.position=0
+        
+    def on_text(self,text):
+        self.caret.on_text(text)
+        self.text.anchor_x="center"
+        self.text.anchor_y="center"
+        self.menu._arrange()
+        
+    def on_text_motion(self,motion):
+        self.caret.on_text_motion(motion)
+        self.text.anchor_x="center"
+        self.text.anchor_y="center"
+        self.menu._arrange()
+
+    def hit_test(self, x, y):
+        return (0 < x - self.layout.x < self.layout.width and
+                0 < y - self.layout.y < self.layout.height)
