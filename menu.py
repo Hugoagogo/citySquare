@@ -114,10 +114,12 @@ class EditableMenuItem(MenuItem):
         
         self.x = self.y = 0
         
+        self.default = True
+        
         self.document = pyglet.text.document.UnformattedDocument(text)
         self.document.set_style(0,
                                 len(self.document.text),
-                                dict(color=(255, 255, 255, 255),
+                                dict(color=(100, 100, 100, 255),
                                      font_name='Square721 BT',
                                      font_size=size,
                                      align="center")
@@ -132,8 +134,14 @@ class EditableMenuItem(MenuItem):
         self.text.anchor_y="center"
         self.caret = pyglet.text.caret.Caret(self.text,color=(255, 255, 255))
         self.caret.visible=True
-        self.caret.mark=self.caret.position=0
+        self.caret.mark=self.caret.position=len(self.text.document.text)
         
+    def wipe_default(self):
+        if self.default:
+            self.text.document.text = ""
+            self.text.document.set_style(0,-1,{"color":(255, 255, 255, 255)})
+        self.default = False
+    
     def on_text(self,text):
         self.caret.on_text(text)
         self.text.anchor_x="center"

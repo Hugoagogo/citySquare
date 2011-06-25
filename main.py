@@ -8,11 +8,9 @@ import time
 import pickle
 import datetime
 
-from easygui import enterbox as dlg_get_string
-
 import os,sys
 
-import highscores
+import highscores, names
 from menu import *
 
 WINDOW_SIZE = (800,600) ## None For Fullscreen
@@ -713,8 +711,11 @@ class PlayLevel(object):
         
         self.show_scores = False
         
+        self.game_over = False
+        
     def activate(self):
-        pyglet.clock.schedule_interval(self.tick_down, .1)
+        if not self.game_over:
+            pyglet.clock.schedule_interval(self.tick_down, .1)
     
     def deactivate(self):
         pyglet.clock.unschedule(self.tick_down)
@@ -729,17 +730,16 @@ class PlayLevel(object):
             new_score = self.time_bar.val
             if scores.on_table(new_score):
                 self.on_draw()
-                for sound in SOUNDS_PLAYING:
-                    sound.pause()
-                player = dlg_get_string(title="New Highscore",msg="Enter your name")
-                if player:    
-                    scores.add(player,new_score)
+                #for sound in SOUNDS_PLAYING:
+                #    sound.pause()
+                self.win.push_scene(NewHighscoreMenu(self.win,lambda name: scores.add(name,new_score)))
             self.end()
             
     def end(self):
         pyglet.clock.unschedule(self.tick_down)
         self.grid.highlight_invalids()
         self.show_scores = True
+        self.game_over = True
             
     def update(self):
         self.score_bar.val = self.grid.score()
@@ -862,7 +862,6 @@ class MainMenu(Menu):
         
         self.set_heading("citySquare")
         self.heading.font_size = 80
-        self.add_items(MenuItem("Test",self.test))
         self.add_items(MenuItem("How to play",self.how_to_play))
         self.add_items(MenuItem("Time Challenge",self.time_challenge))
         self.add_items(MenuItem("Zen Mode",self.zen_mode))
@@ -952,13 +951,13 @@ class HighscoreMenu(Menu):
         self.win.pop_scene()
 
 class NewHighscoreMenu(Menu):
-    def __init__(self,win):
+    def __init__(self,win,set_score):
+        self.set_score = set_score
         super(NewHighscoreMenu,self).__init__(win)
-        self.set_heading("Highscores")
-        self.text = EditableMenuItem("",self.Edit,self)
+        self.set_heading("New Highscore")
+        self.text = EditableMenuItem(names.name(),self.edit,self)
         self.add_items(self.text)
-        self.add_items(MenuItem("Submit",self.submit))
-        self.add_items(MenuItem("Cancel",self.cancel))
+        self.add_items([MenuItem("Submit",self.submit,width=180),MenuItem("Cancel",self.cancel,width=180)])
     
     def on_text(self, text):
         self.text.on_text(text)
@@ -966,10 +965,11 @@ class NewHighscoreMenu(Menu):
     def on_text_motion(self, motion):
         self.text.on_text_motion(motion)
     
-    def Edit(self):
-        self.text.document.text=""
+    def edit(self):
+        self.text.wipe_default()
     
     def submit(self):
+        self.set_score(self.text.document.text.strip()[:30])
         self.win.pop_scene()
         
     def cancel(self):

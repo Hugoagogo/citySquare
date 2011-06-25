@@ -61,7 +61,6 @@ class HighScoreFile:
         print "Not implimented"
         
     def on_table(self,score):
-        print score,self.results[:10]
         if len(self.results[:10]) < 10:
             return True
         for result in self.results[:10]:
