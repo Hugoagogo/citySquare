@@ -80,7 +80,7 @@ class MenuItem(object):
                   multiline = multiline)
         
         font = self.text.document.get_font()
-        self.text.height =  font.ascent - font.descent
+        #self.text.height =  font.ascent - font.descent
         
     def point_over(self,x,y):
         w = (self.text.width)//2 + self.x_pad

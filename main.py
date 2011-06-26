@@ -13,7 +13,7 @@ import os,sys
 import highscores, names
 from menu import *
 
-WINDOW_SIZE = (800,600) ## None For Fullscreen
+WINDOW_SIZE = (800,600) ## None For Fullscreen    
 
 TILE_SIZE = 256
 HALF_TILE_SIZE = TILE_SIZE // 2
@@ -686,6 +686,8 @@ class GameWindow(pyglet.window.Window):
             self.states[-1].on_mouse_scroll(*args)
     
     def on_key_press(self,*args):
+        if args[0] == key.F4:
+            self.set_fullscreen(not self.fullscreen)
         if hasattr(self.states[-1],"on_key_press"):
             self.states[-1].on_key_press(*args)
             
