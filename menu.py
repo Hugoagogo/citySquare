@@ -1,5 +1,6 @@
 import pyglet
 from pyglet import gl
+from pyglet.window import key
 
 ## TextLayout.content_width
 class Menu(object):
@@ -19,10 +20,12 @@ class Menu(object):
                   y=self.win.height-100)
     
     def activate(self):
-        pass   
+        self._arrange()
     def deactivate(self):
         pass
     def _arrange(self):
+        self.heading.x=self.win.width//2
+        self.heading.y=self.win.height-100
         y = self.win.height-self.top
         for row in self.items:
             y-= row[0].text.content_height//2
@@ -47,6 +50,12 @@ class Menu(object):
             self.items[row].extend(items)
             
         self._arrange()
+        
+    def on_key_press(self,*args):
+        if args[0] == key.F4:
+            self.win.set_fullscreen(not self.win.fullscreen)
+            self._arrange()
+        
     def on_mouse_press(self,x,y,button,modifiers):
         for row in self.items:
             for item in row:

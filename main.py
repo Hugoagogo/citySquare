@@ -686,8 +686,6 @@ class GameWindow(pyglet.window.Window):
             self.states[-1].on_mouse_scroll(*args)
     
     def on_key_press(self,*args):
-        if args[0] == key.F4:
-            self.set_fullscreen(not self.fullscreen)
         if hasattr(self.states[-1],"on_key_press"):
             self.states[-1].on_key_press(*args)
             
