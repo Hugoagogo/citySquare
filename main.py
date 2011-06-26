@@ -1009,10 +1009,11 @@ class HowToPlayMenu(Menu):
         super(HowToPlayMenu,self).__init__(win,top=160)
         self.set_heading("How To Play")
         self.add_items(MenuItem(
-"""The aim of citySquare is to match up the tiles from the tray on the right on the grid as best as is possible in a given amount of time. Points are awarded for completed cities (the somewhat poorly drawn orange bits) and roads. They are however taken away if the city or road is incomplete.
+"""The key objective to citySquare is to arrange all of the tiles in the right-hand tray on the grid on the left. The tiles that you have to match are comprised of three different types of terrain roads, cities and plain old grass.
 
-Also note that scoring is skewed to give more points to large cities, so you should really be trying to make your cities as large as possible within the time limit. Finally, ensure that all of your tiles match up, and that any tiles touching the edge of the grid are grass, any invalid tiles are ignored for scoring purposes.
-Don't waste those tiles!""",int,width=650,size=15,border=False,multiline=True))
+Tiles must be placed so that the edges of each square matches up with the squares around it. The entire edge of the grid should be grass and have NO roads or cities touching it.
+
+Points are scored based on completed roads and cities, however cities are scored in a way that will reward you for building larger cities. For example one city made up of four tiles would be worth much more than two cities made up of two tiles.""",int,width=650,size=15,border=False,multiline=True))
         self.add_items([MenuItem("Back",self.back),MenuItem("Controls",self.controls)])
     def back(self):
         self.win.pop_scene()
@@ -1025,9 +1026,13 @@ class ControlsMenu(Menu):
         super(ControlsMenu,self).__init__(win,top=160)
         self.set_heading("Controls")
         self.add_items(MenuItem(
-"""The controls are fairly straigtforward, click a tile to pick it up click again to drop it. Dragging and dropping will not work, you actually have to click and let go.
+"""Tile can be picked up and put down by left clicking. While being held you can either right click or scroll to rotate the tile.
 
-Tiles can be rotated by right-clicking them or by by picking up a tile and scrolling. All of the tiles currently on the grid can be shifted around using the arrow keys. To view a breakdown of your score so far you can press hold tab.""",int,width=650,size=15,border=False,multiline=True))
+All of the tiles currently on the grid can be shifted around using the arrow keys. To view a breakdown of your score so far you can press hold tab.
+
+Finaly if you get bored you can press escape to get tout of a game and return to the menus.
+
+While on the menus you can press F4 to toggle fullscreen""",int,width=650,size=15,border=False,multiline=True))
         self.add_items([MenuItem("Back",self.back),MenuItem("How to Play",self.howtoplay)])
     def back(self):
         self.win.pop_scene()
