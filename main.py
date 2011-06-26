@@ -676,10 +676,18 @@ class GameWindow(pyglet.window.Window):
     def on_mouse_press(self,*args):
         if hasattr(self.states[-1],"on_mouse_press"):
             self.states[-1].on_mouse_press(*args)
+            
+    def on_mouse_release(self,*args):
+        if hasattr(self.states[-1],"on_mouse_release"):
+            self.states[-1].on_mouse_release(*args)
     
     def on_mouse_motion(self,*args):
         if hasattr(self.states[-1],"on_mouse_motion"):
             self.states[-1].on_mouse_motion(*args)
+            
+    def on_mouse_drag(self,*args):
+        if hasattr(self.states[-1],"on_mouse_drag"):
+            self.states[-1].on_mouse_drag(*args)
     
     def on_mouse_scroll(self,*args):
         if hasattr(self.states[-1],"on_mouse_scroll"):
@@ -710,8 +718,8 @@ class PlayLevel(object):
         self.grid.degrid_all()
         
         self.show_scores = False
-        
         self.game_over = False
+        self.dragging = False
         
     def activate(self):
         if not self.game_over:
@@ -754,8 +762,6 @@ class PlayLevel(object):
                     play_sound(SOUND_PLACE)
                 else:
                     play_sound(SOUND_PICKUP)
-                
-
             else:
                 if self.grid.dragging:
                     self.grid.dragging.rotate(1)
@@ -771,9 +777,18 @@ class PlayLevel(object):
         elif self.show_scores > 0:
             self.win.pop_scene()
             
+    def on_mouse_release(self,x,y,button,modifiers):
+        if button == pyglet.window.mouse.LEFT and self.dragging:
+            self.dragging = False
+            self.on_mouse_press(x,y,button,modifiers)
             
+    
     def on_mouse_motion(self,x,y,dx,dy):
         if (not self.show_scores > 0) and self.grid.dragging: self.grid.dragging.set_position(x,y)
+        
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        self.dragging = True
+        self.on_mouse_motion(x, y, dx, dy)
     
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
         if not self.show_scores > 0:
