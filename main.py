@@ -1030,7 +1030,7 @@ class ControlsMenu(Menu):
 
 All of the tiles currently on the grid can be shifted around using the arrow keys. To view a breakdown of your score so far you can press hold tab.
 
-Finaly if you get bored you can press escape to get tout of a game and return to the menus.
+Finaly if you get bored you can press escape to get out of a game and return to the menus.
 
 While on the menus you can press F4 to toggle fullscreen""",int,width=650,size=15,border=False,multiline=True))
         self.add_items([MenuItem("Back",self.back),MenuItem("How to Play",self.howtoplay)])
